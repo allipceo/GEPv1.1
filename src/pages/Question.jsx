@@ -15,8 +15,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
+import useStatsStore from '../stores/statsStore'
 import QuestionView from '../components/QuestionView'
 import AnswerButtons from '../components/AnswerButtons'
+import StatsPanel from '../components/StatsPanel'
 
 // 과목별 헤더 배경색
 const SUBJECT_HEADER_BG = {
@@ -38,9 +40,16 @@ export default function Question() {
   const saveAnswer         = useExamStore((s) => s.saveAnswer)
   const setCurrentIndex    = useExamStore((s) => s.setCurrentIndex)
 
+  // statsStore 연동
+  const updateStats = useStatsStore((s) => s.updateStats)
+  const stats       = useStatsStore((s) => s.stats)
+
   // 로컬 UI 상태: 이번 세션에서 답을 선택한 문제 ID Set
   // store.answers와 무관하게 UI 표시 여부만 제어
   const [localAnswered, setLocalAnswered] = useState(new Set())
+
+  // 통계 기록 완료된 문제 ID Set (중복 기록 방지용 — 이전 버튼으로 돌아가도 유지)
+  const [recordedSet, setRecordedSet] = useState(new Set())
 
   const filteredQuestions = useMemo(
     () =>
@@ -84,10 +93,29 @@ export default function Question() {
     ? (answers[question.id] ?? null)
     : null
 
-  // 답 선택 → store 저장 + localAnswered 추가
+  // StatsPanel 표시용 데이터
+  const currentSubject = selectedSubSubject ?? question?.subSubject ?? selectedSubject
+  const today          = new Date().toISOString().slice(0, 10)
+  const statsData = {
+    cumulative: stats.bySubject[currentSubject] ?? { solved: 0, correct: 0 },
+    daily:      stats.daily[today]              ?? { solved: 0, correct: 0 },
+  }
+
+  // 답 선택 → store 저장 + localAnswered 추가 + 통계 기록 (중복 방지)
   const handleAnswer = (num) => {
     saveAnswer(question.id, num)
     setLocalAnswered((prev) => new Set([...prev, question.id]))
+
+    // 이미 기록된 문제는 skip
+    if (!recordedSet.has(question.id)) {
+      updateStats({
+        subject: question.subSubject,
+        round:   selectedRound,
+        solved:  1,
+        correct: num === question.answer ? 1 : 0,
+      })
+      setRecordedSet((prev) => new Set([...prev, question.id]))
+    }
   }
 
   // 이전 버튼: 이동 대상 문제의 localAnswered 제거 → 초기 상태로 표시
@@ -153,6 +181,13 @@ export default function Question() {
           selectedAnswer={displayAnswer}
           correctAnswer={question.answer}
           onAnswer={handleAnswer}
+        />
+
+        {/* 통계 패널 — 정답 확인 후 자동 펼침 */}
+        <StatsPanel
+          subSubject={currentSubject}
+          isVisible={displayAnswer !== null}
+          stats={statsData}
         />
 
         {/* 이전 / 다음 버튼 */}
