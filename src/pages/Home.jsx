@@ -160,7 +160,7 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900">GEP 보험중개사</h1>
             {dday !== null ? (
               <p className="text-sm font-semibold text-blue-600 mt-0.5">
-                {dday === 0 ? 'D-Day' : dday > 0 ? `D-${dday}일` : `D+${Math.abs(dday)}일`}
+                {dday === 0 ? 'D-Day' : dday > 0 ? `D-${dday}일` : '시험 종료'}
               </p>
             ) : (
               <button
@@ -227,8 +227,8 @@ export default function Home() {
                       >
                         <span className="flex-1 text-sm text-gray-800">{sub}</span>
                         <span className="text-xs text-gray-400">{qCount}문제</span>
-                        <span className={`text-sm font-semibold w-10 text-right ${getAccuracyColor(pct)}`}>
-                          {pct !== null ? `${pct}%` : '-'}
+                        <span className={`text-sm font-semibold w-16 text-right shrink-0 ${getAccuracyColor(pct)}`}>
+                          {pct !== null ? `${pct}%${pct < 40 ? ' ⚠️' : ''}` : '-'}
                         </span>
                         <span className="text-gray-300 text-sm">›</span>
                       </button>

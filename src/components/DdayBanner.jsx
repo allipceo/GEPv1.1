@@ -10,13 +10,13 @@ export default function DdayBanner({ name, dday }) {
     dday === null ? null
     : dday === 0  ? 'D-Day'
     : dday > 0    ? `D-${dday}`
-    :               `D+${Math.abs(dday)}`
+    :               '시험 종료'
 
   const ddayColor =
     dday === null ? ''
     : dday === 0  ? 'text-red-600'
     : dday > 0    ? 'text-blue-600'
-    :               'text-gray-500'
+    :               'text-gray-400'
 
   return (
     <div className="flex justify-between items-center">
