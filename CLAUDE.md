@@ -31,7 +31,9 @@
 - 한 번에 하나의 작업만 진행
 - 작업 완료 후 반드시 노팀장 창에 보고
 - 소스 수정 후 `npm run build` 빌드 성공 확인 필수
-- 배포 명령: `vercel --prod`
+- 배포 명령: `git add . && git commit -m "커밋메시지" && git push origin main`
+  - GitHub push → Vercel 자동 배포 (main 브랜치 연동)
+  - `vercel --prod` 직접 실행 금지 (GitHub이 단일 배포 기준)
 
 ---
 
@@ -122,6 +124,7 @@ docs/GEP_XXX_작업명.md
 - 파일명: 변경 내용
 
 빌드: ✅ 성공
+배포: git push origin main 완료
 배포 URL: https://gepv11.vercel.app
 문서: docs/GEP_XXX_작업명.md 생성
 ```
