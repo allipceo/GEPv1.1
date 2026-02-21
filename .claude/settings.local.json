@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"\nSet-Location ''D:\\\\zobis2026\\\\01_project\\\\개발\\\\gepv1.1''\n$job = Start-Job -ScriptBlock { Set-Location ''D:\\\\zobis2026\\\\01_project\\\\개발\\\\gepv1.1''; npm run dev 2>&1 }\nStart-Sleep -Seconds 8\n$output = Receive-Job $job\nStop-Job $job\nRemove-Job $job\n$output\n\")",
+      "Bash(powershell -Command \"Set-Location ''D:\\\\zobis2026\\\\01_project\\\\개발\\\\gepv1.1''; npm install dotenv @notionhq/client 2>&1\")",
+      "Bash(powershell -Command:*)",
+      "Bash(dir \"D:\\\\ZOBIS2026\\\\01_Project\\\\개발\\\\GEPv1.1\" /s /b)",
+      "Bash(cmd /c \"ipconfig 2>nul\")",
+      "Bash(cmd /c \"ipconfig\")",
+      "Bash(powershell -NoProfile -Command:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel:*)",
+      "Bash(npm run build:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
