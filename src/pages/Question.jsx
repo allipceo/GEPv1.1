@@ -109,13 +109,18 @@ export default function Question() {
 
     // 이미 기록된 문제는 skip
     if (!recordedSet.has(question.id)) {
-      updateStats({
-        subject: question.subSubject,
-        round:   selectedRound,
-        solved:  1,
-        correct: num === question.answer ? 1 : 0,
-      })
-      setRecordedSet((prev) => new Set([...prev, question.id]))
+      const safeRound = Number.isInteger(question.round) ? question.round : null
+      if (!safeRound) {
+        console.warn('[GEP] question.round 비정상 — 통계 미기록:', question.id, question.round)
+      } else {
+        updateStats({
+          subject: question.subSubject,
+          round:   safeRound,
+          solved:  1,
+          correct: num === question.answer ? 1 : 0,
+        })
+        setRecordedSet((prev) => new Set([...prev, question.id]))
+      }
     }
   }
 
