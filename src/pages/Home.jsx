@@ -6,7 +6,12 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
+import useStatsStore from '../stores/statsStore'
 import Settings, { loadSettings } from '../components/Settings'
+import DdayBanner from '../components/DdayBanner'
+import ProgressStats from '../components/ProgressStats'
+import TodayStats from '../components/TodayStats'
+import SubjectStats from '../components/SubjectStats'
 
 const ROUNDS   = [23, 24, 25, 26, 27, 28, 29, 30, 31]
 const SUBJECTS = ['법령', '손보1부', '손보2부']
@@ -64,6 +69,11 @@ export default function Home() {
   }, [])
 
   const dday = calcDday(settings.examDate)
+
+  // statsStore 연동
+  const stats = useStatsStore((s) => s.stats)
+  const today = new Date().toISOString().slice(0, 10)
+  const todayStats = stats.daily[today] ?? { solved: 0, correct: 0 }
 
   // filteredQuestions
   const filteredQuestions = useMemo(
@@ -129,6 +139,15 @@ export default function Home() {
             </svg>
           </button>
         </div>
+
+        {/* 통계 대시보드 */}
+        <section className="bg-gray-50 rounded-xl p-4 flex flex-col gap-4 border border-gray-100">
+          <DdayBanner name={settings.name} dday={dday} />
+          <div className="border-t border-gray-200" />
+          <ProgressStats total={stats.total} />
+          <TodayStats daily={todayStats} />
+          <SubjectStats bySubject={stats.bySubject} />
+        </section>
 
         {/* 회차 선택 */}
         <section>
