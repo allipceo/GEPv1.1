@@ -1,6 +1,7 @@
 /**
  * Home.jsx — 홈 화면
  * 회차/과목/세부과목 선택 + 이어풀기 + 처음부터 + 설정
+ * GEP_026: 탭 추가 — 과목별 학습 (기본/좌측) | 회차별 풀기 (우측/기존)
  */
 
 import { useMemo, useState, useEffect } from 'react'
@@ -33,6 +34,30 @@ const SUBJECT_START_BTN = {
   '손보2부': 'bg-purple-600 hover:bg-purple-700',
 }
 
+// 과목별 학습 탭 — 12과목 구성
+const STUDY_SECTIONS = [
+  {
+    label: '법령', mainSubject: '법령', textColor: 'text-blue-600',
+    subs: ['보험업법', '상법', '세제재무', '위험관리'],
+  },
+  {
+    label: '손보1부', mainSubject: '손보1부', textColor: 'text-green-600',
+    subs: ['보증보험', '연금저축', '자동차보험', '특종보험'],
+  },
+  {
+    label: '손보2부', mainSubject: '손보2부', textColor: 'text-purple-600',
+    subs: ['재보험', '항공우주', '해상보험', '화재보험'],
+  },
+]
+
+// 정답률 색상
+function getAccuracyColor(pct) {
+  if (pct === null) return 'text-gray-400'
+  if (pct >= 60)   return 'text-green-600'
+  if (pct >= 40)   return 'text-yellow-600'
+  return 'text-red-600'
+}
+
 // D-day 계산 (양수: 시험 전, 0: 당일, 음수: 지남)
 function calcDday(examDate) {
   if (!examDate) return null
@@ -62,6 +87,7 @@ export default function Home() {
   // 설정 상태 (localStorage)
   const [settings, setSettings]         = useState({ name: '', examDate: '' })
   const [showSettings, setShowSettings] = useState(false)
+  const [activeTab, setActiveTab]       = useState('학습')  // '학습' | '회차'
 
   // 앱 시작 시 설정 자동 로드
   useEffect(() => {
@@ -75,12 +101,12 @@ export default function Home() {
   const today = new Date().toISOString().slice(0, 10)
   const todayStats = stats.daily[today] ?? { solved: 0, correct: 0 }
 
-  // filteredQuestions
+  // filteredQuestions (round='전체' 지원)
   const filteredQuestions = useMemo(
     () =>
       questions.filter((q) => {
         if (q.subject !== selectedSubject) return false
-        if (q.round !== selectedRound) return false
+        if (selectedRound !== '전체' && q.round !== selectedRound) return false
         if (selectedSubSubject && q.subSubject !== selectedSubSubject) return false
         return true
       }),
@@ -105,6 +131,24 @@ export default function Home() {
     isReady &&
     filteredQuestions.length > 0 &&
     (resumeIndex > 0 || Object.keys(answers).length > 0)
+
+  // 세부과목별 문제 수 (과목별 학습 탭용)
+  const subjectQCounts = useMemo(() => {
+    const counts = {}
+    questions.forEach((q) => {
+      const key = `${q.subject}__${q.subSubject}`
+      counts[key] = (counts[key] ?? 0) + 1
+    })
+    return counts
+  }, [questions])
+
+  // 과목별 학습 시작 — round='전체', 선택 subSubject로 이동
+  const handleSubjectStudy = (mainSubject, sub) => {
+    setSubject(mainSubject)
+    setRound('전체')
+    setSubSubject(sub)
+    navigate('/question')
+  }
 
   return (
     <>
@@ -140,89 +184,151 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 통계 대시보드 */}
-        <section className="bg-gray-50 rounded-xl p-4 flex flex-col gap-4 border border-gray-100">
-          <DdayBanner name={settings.name} dday={dday} />
-          <div className="border-t border-gray-200" />
-          <ProgressStats total={stats.total} />
-          <TodayStats daily={todayStats} />
-          <SubjectStats bySubject={stats.bySubject} />
-        </section>
-
-        {/* 회차 선택 */}
-        <section>
-          <p className="text-xs font-medium text-gray-500 mb-2">회차 선택</p>
-          <div className="flex flex-wrap gap-2">
-            {ROUNDS.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRound(r)}
-                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                  selectedRound === r
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : `bg-white text-gray-700 border-gray-300 ${SUBJECT_INACTIVE[selectedSubject]}`
-                }`}
-              >
-                {r}회
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 과목 선택 */}
-        <section>
-          <p className="text-xs font-medium text-gray-500 mb-2">과목 선택</p>
-          <div className="flex gap-2">
-            {SUBJECTS.map((s) => (
-              <button
-                key={s}
-                onClick={() => { setSubject(s); setSubSubject(null) }}
-                className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${
-                  selectedSubject === s
-                    ? SUBJECT_ACTIVE[s]
-                    : `bg-white text-gray-700 border-gray-300 ${SUBJECT_INACTIVE[s]}`
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 세부과목 드롭다운 */}
-        <section>
-          <p className="text-xs font-medium text-gray-500 mb-2">세부과목</p>
-          <select
-            value={selectedSubSubject ?? '전체'}
-            onChange={(e) => {
-              const val = e.target.value
-              setSubSubject(val === '전체' ? null : val)
-            }}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white"
-          >
-            {subSubjectOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </section>
-
-        {/* 하단 버튼: 이어풀기(2/3) + 처음부터(1/3) */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* 탭: 과목별 학습 | 회차별 풀기 */}
+        <div className="flex bg-gray-100 rounded-xl p-1">
           <button
-            onClick={() => { resumeProgress(); navigate('/question') }}
-            className={`col-span-2 py-3 rounded-xl text-white font-semibold text-base transition-colors ${SUBJECT_START_BTN[selectedSubject]}`}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              activeTab === '학습' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
+            }`}
+            onClick={() => setActiveTab('학습')}
           >
-            {resumeIndex > 0
-              ? `이어풀기 (${resumeIndex + 1}/${filteredQuestions.length})`
-              : '이어풀기'}
+            과목별 학습
           </button>
           <button
-            onClick={() => { setCurrentIndex(0); navigate('/question') }}
-            className="col-span-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-base"
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              activeTab === '회차' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
+            }`}
+            onClick={() => setActiveTab('회차')}
           >
-            처음부터
+            회차별 풀기
           </button>
         </div>
+
+        {/* ── 과목별 학습 탭 ── */}
+        {activeTab === '학습' && (
+          <>
+            {STUDY_SECTIONS.map((section) => (
+              <section key={section.label}>
+                <p className={`text-xs font-semibold mb-2 ${section.textColor}`}>
+                  {section.label}
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {section.subs.map((sub) => {
+                    const qCount = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
+                    const s      = stats.bySubject[sub]
+                    const pct    = s && s.solved > 0
+                      ? Math.round((s.correct / s.solved) * 100)
+                      : null
+                    return (
+                      <button
+                        key={sub}
+                        className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-gray-300 active:bg-gray-50 transition-colors"
+                        onClick={() => handleSubjectStudy(section.mainSubject, sub)}
+                      >
+                        <span className="flex-1 text-sm text-gray-800">{sub}</span>
+                        <span className="text-xs text-gray-400">{qCount}문제</span>
+                        <span className={`text-sm font-semibold w-10 text-right ${getAccuracyColor(pct)}`}>
+                          {pct !== null ? `${pct}%` : '-'}
+                        </span>
+                        <span className="text-gray-300 text-sm">›</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
+
+        {/* ── 회차별 풀기 탭 (기존 내용 그대로) ── */}
+        {activeTab === '회차' && (
+          <>
+            {/* 통계 대시보드 */}
+            <section className="bg-gray-50 rounded-xl p-4 flex flex-col gap-4 border border-gray-100">
+              <DdayBanner name={settings.name} dday={dday} />
+              <div className="border-t border-gray-200" />
+              <ProgressStats total={stats.total} />
+              <TodayStats daily={todayStats} />
+              <SubjectStats bySubject={stats.bySubject} />
+            </section>
+
+            {/* 회차 선택 */}
+            <section>
+              <p className="text-xs font-medium text-gray-500 mb-2">회차 선택</p>
+              <div className="flex flex-wrap gap-2">
+                {ROUNDS.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRound(r)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                      selectedRound === r
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : `bg-white text-gray-700 border-gray-300 ${SUBJECT_INACTIVE[selectedSubject]}`
+                    }`}
+                  >
+                    {r}회
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* 과목 선택 */}
+            <section>
+              <p className="text-xs font-medium text-gray-500 mb-2">과목 선택</p>
+              <div className="flex gap-2">
+                {SUBJECTS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setSubject(s); setSubSubject(null) }}
+                    className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${
+                      selectedSubject === s
+                        ? SUBJECT_ACTIVE[s]
+                        : `bg-white text-gray-700 border-gray-300 ${SUBJECT_INACTIVE[s]}`
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* 세부과목 드롭다운 */}
+            <section>
+              <p className="text-xs font-medium text-gray-500 mb-2">세부과목</p>
+              <select
+                value={selectedSubSubject ?? '전체'}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSubSubject(val === '전체' ? null : val)
+                }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white"
+              >
+                {subSubjectOptions.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </section>
+
+            {/* 하단 버튼: 이어풀기(2/3) + 처음부터(1/3) */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => { resumeProgress(); navigate('/question') }}
+                className={`col-span-2 py-3 rounded-xl text-white font-semibold text-base transition-colors ${SUBJECT_START_BTN[selectedSubject]}`}
+              >
+                {resumeIndex > 0
+                  ? `이어풀기 (${resumeIndex + 1}/${filteredQuestions.length})`
+                  : '이어풀기'}
+              </button>
+              <button
+                onClick={() => { setCurrentIndex(0); navigate('/question') }}
+                className="col-span-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-base"
+              >
+                처음부터
+              </button>
+            </div>
+          </>
+        )}
+
       </div>
 
       {/* 설정 팝업 */}

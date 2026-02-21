@@ -25,7 +25,7 @@ function makeProgressKey(round, subject) {
 export const selectFilteredQuestions = (state) =>
   state.questions.filter((q) => {
     if (q.subject !== state.selectedSubject) return false;
-    if (q.round !== state.selectedRound) return false;
+    if (state.selectedRound !== '전체' && q.round !== state.selectedRound) return false;
     if (state.selectedSubSubject && q.subSubject !== state.selectedSubSubject) return false;
     return true;
   });

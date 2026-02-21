@@ -55,7 +55,7 @@ export default function Question() {
     () =>
       questions.filter((q) => {
         if (q.subject !== selectedSubject) return false
-        if (q.round !== selectedRound) return false
+        if (selectedRound !== '전체' && q.round !== selectedRound) return false
         if (selectedSubSubject && q.subSubject !== selectedSubSubject) return false
         return true
       }),
@@ -84,9 +84,10 @@ export default function Question() {
   if (!question) return null
 
   const headerBg = SUBJECT_HEADER_BG[selectedSubject] ?? 'bg-blue-600'
+  const roundLabel  = selectedRound === '전체' ? '전체' : `${selectedRound}회`
   const headerLabel = selectedSubSubject
-    ? `${selectedRound}회 ${selectedSubSubject}`
-    : `${selectedRound}회 ${selectedSubject}`
+    ? `${roundLabel} ${selectedSubSubject}`
+    : `${roundLabel} ${selectedSubject}`
 
   // 이 문제의 표시용 답안: localAnswered에 있을 때만 store 값 사용
   const displayAnswer = localAnswered.has(question.id)
