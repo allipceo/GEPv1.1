@@ -33,5 +33,6 @@ dist-ssr
 # Windows reserved device name (생성된 빈 파일)
 nul
 
-# Claude Code 로컬 설정
-.claude/
+# Claude Code 로컬 설정 (세션 데이터 제외, commands 제외)
+.claude/*
+!.claude/commands/
