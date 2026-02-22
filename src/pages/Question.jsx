@@ -19,6 +19,8 @@ import useStatsStore from '../stores/statsStore'
 import QuestionView from '../components/QuestionView'
 import AnswerButtons from '../components/AnswerButtons'
 import StatsPanel from '../components/StatsPanel'
+import { recordAttempt } from '../services/statsService'
+import { useAuthStore } from '../stores/authStore'
 
 // 과목별 헤더 배경색
 const SUBJECT_HEADER_BG = {
@@ -41,8 +43,7 @@ export default function Question() {
   const setCurrentIndex    = useExamStore((s) => s.setCurrentIndex)
 
   // statsStore 연동
-  const updateStats = useStatsStore((s) => s.updateStats)
-  const stats       = useStatsStore((s) => s.stats)
+  const stats = useStatsStore((s) => s.stats)
 
   // 로컬 UI 상태: 이번 세션에서 답을 선택한 문제 ID Set
   // store.answers와 무관하게 UI 표시 여부만 제어
@@ -103,7 +104,7 @@ export default function Question() {
   }
 
   // 답 선택 → store 저장 + localAnswered 추가 + 통계 기록 (중복 방지)
-  const handleAnswer = (num) => {
+  const handleAnswer = async (num) => {
     saveAnswer(question.id, num)
     setLocalAnswered((prev) => new Set([...prev, question.id]))
 
@@ -113,11 +114,12 @@ export default function Question() {
       if (!safeRound) {
         console.warn('[GEP] question.round 비정상 — 통계 미기록:', question.id, question.round)
       } else {
-        updateStats({
-          subject: question.subSubject,
-          round:   safeRound,
-          solved:  1,
-          correct: num === question.answer ? 1 : 0,
+        const authState = useAuthStore.getState()
+        await recordAttempt(useStatsStore.getState(), authState, {
+          question,
+          selectedAnswer: num,
+          isCorrect:      num === question.answer,
+          studyMode:      selectedRound === '전체' ? 'subject' : 'round',
         })
         setRecordedSet((prev) => new Set([...prev, question.id]))
       }

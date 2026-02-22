@@ -13,6 +13,7 @@ import DdayBanner from '../components/DdayBanner'
 import ProgressStats from '../components/ProgressStats'
 import TodayStats from '../components/TodayStats'
 import SubjectStats from '../components/SubjectStats'
+// import { useAuthStore } from '../stores/authStore'  // TODO: 로그인 UI — Phase 2.1에서 구현
 
 const ROUNDS   = [23, 24, 25, 26, 27, 28, 29, 30, 31]
 const SUBJECTS = ['법령', '손보1부', '손보2부']
