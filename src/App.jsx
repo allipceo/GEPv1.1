@@ -6,15 +6,19 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import useExamStore from './stores/examStore'
+import { useAuthStore } from './stores/authStore'
 import Home from './pages/Home'
 import Question from './pages/Question'
 import Result from './pages/Result'
 
 export default function App() {
-  const loadQuestions = useExamStore((s) => s.loadQuestions)
+  const loadQuestions    = useExamStore((s) => s.loadQuestions)
+  const initAuthListener = useAuthStore((s) => s.initAuthListener)
 
   useEffect(() => {
     loadQuestions()
+    const subscription = initAuthListener()
+    return () => subscription?.unsubscribe()
   }, [])
 
   return (

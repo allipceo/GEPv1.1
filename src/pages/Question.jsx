@@ -19,8 +19,11 @@ import useStatsStore from '../stores/statsStore'
 import QuestionView from '../components/QuestionView'
 import AnswerButtons from '../components/AnswerButtons'
 import StatsPanel from '../components/StatsPanel'
+import LimitPopup from '../components/LimitPopup'
 import { recordAttempt } from '../services/statsService'
 import { useAuthStore } from '../stores/authStore'
+
+const GUEST_LIMIT = 30
 
 // 과목별 헤더 배경색
 const SUBJECT_HEADER_BG = {
@@ -45,12 +48,19 @@ export default function Question() {
   // statsStore 연동
   const stats = useStatsStore((s) => s.stats)
 
+  // authStore — 게스트 제한 판별
+  const authStatus   = useAuthStore((s) => s.authStatus)
+  const serviceLevel = useAuthStore((s) => s.serviceLevel)
+
   // 로컬 UI 상태: 이번 세션에서 답을 선택한 문제 ID Set
   // store.answers와 무관하게 UI 표시 여부만 제어
   const [localAnswered, setLocalAnswered] = useState(new Set())
 
   // 통계 기록 완료된 문제 ID Set (중복 기록 방지용 — 이전 버튼으로 돌아가도 유지)
   const [recordedSet, setRecordedSet] = useState(new Set())
+
+  // 30문제 제한 팝업 표시 여부
+  const [showLimitPopup, setShowLimitPopup] = useState(false)
 
   const filteredQuestions = useMemo(
     () =>
@@ -143,13 +153,32 @@ export default function Question() {
   const handleNext = () => {
     if (currentIndex === filteredQuestions.length - 1) {
       navigate('/result')
-    } else {
-      setCurrentIndex(currentIndex + 1)
+      return
     }
+
+    // 게스트 30문제 제한 — 다음 문제 진입 전 체크
+    if (authStatus === 'guest' && serviceLevel < 2) {
+      const subjectSolved = stats.bySubject[currentSubject]?.solved ?? 0
+      if (subjectSolved >= GUEST_LIMIT) {
+        setShowLimitPopup(true)
+        return
+      }
+    }
+
+    setCurrentIndex(currentIndex + 1)
   }
 
   return (
     <div className="flex flex-col h-screen max-w-[640px] mx-auto bg-white">
+
+      {/* 게스트 30문제 제한 팝업 */}
+      {showLimitPopup && (
+        <LimitPopup
+          subSubject={currentSubject}
+          onHome={() => navigate('/')}
+          onDismiss={() => setShowLimitPopup(false)}
+        />
+      )}
 
       {/* 상단 헤더 — 과목 컬러 배경 */}
       <div className={`flex-shrink-0 flex justify-between items-center px-4 py-2 ${headerBg}`}>

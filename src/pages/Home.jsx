@@ -13,7 +13,10 @@ import DdayBanner from '../components/DdayBanner'
 import ProgressStats from '../components/ProgressStats'
 import TodayStats from '../components/TodayStats'
 import SubjectStats from '../components/SubjectStats'
-// import { useAuthStore } from '../stores/authStore'  // TODO: 로그인 UI — Phase 2.1에서 구현
+import StatsPanel from '../components/StatsPanel'
+import LoginButton from '../components/LoginButton'
+import { useAuthStore } from '../stores/authStore'
+import { supabase } from '../lib/supabase'
 
 const ROUNDS   = [23, 24, 25, 26, 27, 28, 29, 30, 31]
 const SUBJECTS = ['법령', '손보1부', '손보2부']
@@ -102,6 +105,12 @@ export default function Home() {
   const today = new Date().toISOString().slice(0, 10)
   const todayStats = stats.daily[today] ?? { solved: 0, correct: 0 }
 
+  // authStore — 로그인 상태 + 게스트 제한 판별
+  const authStatus   = useAuthStore((s) => s.authStatus)
+  const serviceLevel = useAuthStore((s) => s.serviceLevel)
+  const email        = useAuthStore((s) => s.email)
+  const isGuest      = authStatus === 'guest' && serviceLevel < 2
+
   // filteredQuestions (round='전체' 지원)
   const filteredQuestions = useMemo(
     () =>
@@ -172,17 +181,40 @@ export default function Home() {
               </button>
             )}
           </div>
-          {/* 설정 아이콘 버튼 */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="text-gray-400 hover:text-gray-700 p-1"
-            aria-label="설정"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
+          {/* 우상단: 로그인 상태 + 설정 */}
+          <div className="flex items-center gap-2">
+
+            {/* 로그인 상태 표시 */}
+            {authStatus === 'guest' ? (
+              <LoginButton />
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-700">
+                  {email?.slice(0, 2) ?? '?'}
+                </span>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="text-xs text-gray-400 hover:text-gray-600 px-1 py-1"
+                  style={{ minHeight: '44px' }}
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
+
+            {/* 설정 아이콘 버튼 */}
+            <button
+              onClick={() => setShowSettings(true)}
+              className="text-gray-400 hover:text-gray-700 p-1"
+              aria-label="설정"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+
+          </div>
         </div>
 
         {/* 탭: 과목별 학습 | 회차별 풀기 */}
@@ -208,6 +240,9 @@ export default function Home() {
         {/* ── 과목별 학습 탭 ── */}
         {activeTab === '학습' && (
           <>
+            {/* 학습 현황 패널 */}
+            <StatsPanel homeMode allStats={stats} />
+
             {STUDY_SECTIONS.map((section) => (
               <section key={section.label}>
                 <p className={`text-xs font-semibold mb-2 ${section.textColor}`}>
@@ -215,11 +250,12 @@ export default function Home() {
                 </p>
                 <div className="flex flex-col gap-1.5">
                   {section.subs.map((sub) => {
-                    const qCount = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
-                    const s      = stats.bySubject[sub]
-                    const pct    = s && s.solved > 0
+                    const qCount  = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
+                    const s       = stats.bySubject[sub]
+                    const pct     = s && s.solved > 0
                       ? Math.round((s.correct / s.solved) * 100)
                       : null
+                    const solved  = s?.solved ?? 0
                     return (
                       <button
                         key={sub}
@@ -227,7 +263,14 @@ export default function Home() {
                         onClick={() => handleSubjectStudy(section.mainSubject, sub)}
                       >
                         <span className="flex-1 text-sm text-gray-800">{sub}</span>
-                        <span className="text-xs text-gray-400">{qCount}문제</span>
+                        {/* 게스트: N/30 진행률 표시 */}
+                        {isGuest ? (
+                          <span className="text-xs text-gray-400">
+                            {Math.min(solved, 30)}/30
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">{qCount}문제</span>
+                        )}
                         <span className={`text-sm font-semibold w-16 text-right shrink-0 ${getAccuracyColor(pct)}`}>
                           {pct !== null ? `${pct}%${pct < 40 ? ' ⚠️' : ''}` : '-'}
                         </span>
