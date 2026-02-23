@@ -1,13 +1,18 @@
 /**
- * StatsPanel.jsx — 통계 표시 패널 (두 가지 모드)
+ * StatsPanel.jsx — 통계 표시 패널 (세 가지 모드)
  *
  * [Question.jsx 용 — 기본 모드]
  *   props: subSubject, isVisible, stats
  *   정답 확인 후 자동 펼침. 세부과목 누적현황 / 금일현황.
  *
- * [Home.jsx 용 — homeMode]
- *   props: homeMode=true, allStats
+ * [Home.jsx 용 — homeMode 게스트]
+ *   props: homeMode=true, allStats, isGuest=true
+ *   과목당 30문제 무료체험 진행률 표시.
+ *
+ * [Home.jsx 용 — homeMode 회원]
+ *   props: homeMode=true, allStats, wrongCount
  *   레벨1 로컬 통계 요약: 누적/금일 풀이+정답, 3과목별 정답률.
+ *   레벨2+: wrongCount(오답 횟수) 추가 표시.
  */
 
 // 3과목 → 세부과목 매핑 (statsStore.bySubject 키와 일치)
@@ -17,14 +22,64 @@ const MAIN_SUBJECTS = [
   { label: '손보2부', color: 'text-purple-600', subs: ['재보험', '항공우주', '해상보험', '화재보험'] },
 ]
 
+const GUEST_LIMIT = 30
+
 export default function StatsPanel({
   // Question.jsx 용
   subSubject, isVisible, stats,
   // Home.jsx 용
   homeMode = false, allStats,
+  isGuest = false,
+  wrongCount = null,
 }) {
 
-  // ── Home.jsx 용 — 통계 요약 패널 ──────────────────────────────
+  // ── Home.jsx 게스트용 — 무료체험 진행률 패널 ─────────────────
+  if (homeMode && isGuest && allStats) {
+    const { bySubject } = allStats
+
+    const guestTotal = MAIN_SUBJECTS.reduce(
+      (sum, { subs }) =>
+        sum + subs.reduce((s, sub) => s + Math.min(bySubject[sub]?.solved ?? 0, GUEST_LIMIT), 0),
+      0
+    )
+
+    return (
+      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500">무료체험 현황</p>
+          <span className="text-xs text-blue-500 font-medium">과목당 30문제 무료</span>
+        </div>
+
+        {/* 전체 진행 */}
+        <div className="bg-white rounded-lg py-2 px-3 shadow-sm flex items-center justify-between">
+          <span className="text-xs text-gray-500">전체 진행</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold text-gray-900">{guestTotal}</span>
+            <span className="text-xs text-gray-400">/ 360</span>
+          </div>
+        </div>
+
+        {/* 3과목별 진행 */}
+        <div className="flex flex-col gap-1.5">
+          {MAIN_SUBJECTS.map(({ label, color, subs }) => {
+            const solved  = subs.reduce((s, sub) => s + Math.min(bySubject[sub]?.solved ?? 0, GUEST_LIMIT), 0)
+            const correct = subs.reduce((s, sub) => s + (bySubject[sub]?.correct ?? 0), 0)
+            const pct     = solved > 0 ? Math.round((correct / solved) * 100) : null
+            return (
+              <div key={label} className="flex items-center justify-between px-1">
+                <span className={`text-xs font-semibold ${color}`}>{label}</span>
+                <span className="text-xs text-gray-500">
+                  {solved}/120{pct !== null ? ` · ${pct}%` : ''}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Home.jsx 회원용 — 통계 요약 패널 ──────────────────────────
   if (homeMode && allStats) {
     const { total, daily, bySubject } = allStats
     const today     = new Date().toISOString().slice(0, 10)
@@ -57,6 +112,14 @@ export default function StatsPanel({
             <p className="text-xs text-gray-500 mt-0.5">금일 정답</p>
           </div>
         </div>
+
+        {/* 레벨2+ 오답 횟수 */}
+        {wrongCount !== null && wrongCount > 0 && (
+          <div className="bg-red-50 rounded-lg py-2 px-3 shadow-sm flex items-center justify-between">
+            <span className="text-xs text-gray-500">오답 누적</span>
+            <span className="text-sm font-semibold text-red-500">{wrongCount.toLocaleString()}회</span>
+          </div>
+        )}
 
         {/* 3과목별 정답률 */}
         <div className="flex flex-col gap-1.5">

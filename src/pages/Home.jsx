@@ -70,6 +70,11 @@ export default function Home() {
   const email        = useAuthStore((s) => s.email)
   const isGuest      = authStatus === 'guest' && serviceLevel < 2
 
+  // 레벨2+ 오답 횟수 (로컬 statsStore 기준)
+  const wrongCount = (authStatus === 'authenticated' && serviceLevel >= 2)
+    ? Math.max(0, stats.total.solved - stats.total.correct)
+    : null
+
   // 세부과목별 문제 수
   const subjectQCounts = useMemo(() => {
     const counts = {}
@@ -162,7 +167,7 @@ export default function Home() {
         </div>
 
         {/* 학습 현황 대시보드 */}
-        <StatsPanel homeMode allStats={stats} />
+        <StatsPanel homeMode allStats={stats} isGuest={isGuest} wrongCount={wrongCount} />
 
         {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
         {authStatus === 'authenticated' && serviceLevel >= 2 && (
@@ -174,7 +179,14 @@ export default function Home() {
               <span className="text-base">📝</span>
               <span className="text-sm font-semibold text-red-700">틀린문제 풀기</span>
             </div>
-            <span className="text-red-400 text-sm">›</span>
+            <div className="flex items-center gap-2">
+              {wrongCount > 0 && (
+                <span className="text-xs font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">
+                  {wrongCount}개
+                </span>
+              )}
+              <span className="text-red-400 text-sm">›</span>
+            </div>
           </button>
         )}
 
