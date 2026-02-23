@@ -1,7 +1,6 @@
 /**
  * Home.jsx — 홈 화면
- * 회차/과목/세부과목 선택 + 이어풀기 + 처음부터 + 설정
- * GEP_026: 탭 추가 — 과목별 학습 (기본/좌측) | 회차별 풀기 (우측/기존)
+ * GEP_041: 3과목 아코디언 재설계 (기본 접힘, 대과목 정답률 표시)
  */
 
 import { useMemo, useState, useEffect } from 'react'
@@ -14,7 +13,7 @@ import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
 
-// 과목별 학습 탭 — 12과목 구성
+// 3과목 → 세부과목 구성
 const STUDY_SECTIONS = [
   {
     label: '법령', mainSubject: '법령', textColor: 'text-blue-600',
@@ -38,7 +37,7 @@ function getAccuracyColor(pct) {
   return 'text-red-600'
 }
 
-// D-day 계산 (양수: 시험 전, 0: 당일, 음수: 지남)
+// D-day 계산
 function calcDday(examDate) {
   if (!examDate) return null
   const today = new Date()
@@ -50,27 +49,22 @@ function calcDday(examDate) {
 export default function Home() {
   const navigate = useNavigate()
 
-  const selectedSubject    = useExamStore((s) => s.selectedSubject)
-  const setSubject         = useExamStore((s) => s.setSubject)
-  const setRound           = useExamStore((s) => s.setRound)
-  const setSubSubject      = useExamStore((s) => s.setSubSubject)
-  const questions          = useExamStore((s) => s.questions)
+  const setSubject    = useExamStore((s) => s.setSubject)
+  const setRound      = useExamStore((s) => s.setRound)
+  const setSubSubject = useExamStore((s) => s.setSubSubject)
+  const questions     = useExamStore((s) => s.questions)
 
-  // 설정 상태 (localStorage)
   const [settings, setSettings]         = useState({ name: '', examDate: '' })
   const [showSettings, setShowSettings] = useState(false)
+  const [openSections, setOpenSections] = useState({})   // 기본 모두 접힘
 
-  // 앱 시작 시 설정 자동 로드
   useEffect(() => {
     setSettings(loadSettings())
   }, [])
 
   const dday = calcDday(settings.examDate)
 
-  // statsStore 연동
-  const stats = useStatsStore((s) => s.stats)
-
-  // authStore — 로그인 상태 + 게스트 제한 판별
+  const stats        = useStatsStore((s) => s.stats)
   const authStatus   = useAuthStore((s) => s.authStatus)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const email        = useAuthStore((s) => s.email)
@@ -86,7 +80,25 @@ export default function Home() {
     return counts
   }, [questions])
 
-  // 과목별 학습 시작 — round='전체', 선택 subSubject로 이동
+  // 대과목별 전체 정답률
+  const mainSubjectStats = useMemo(() => {
+    const result = {}
+    STUDY_SECTIONS.forEach(({ label, subs }) => {
+      const agg = subs.reduce(
+        (acc, sub) => {
+          const d = stats.bySubject[sub] ?? { solved: 0, correct: 0 }
+          return { solved: acc.solved + d.solved, correct: acc.correct + d.correct }
+        },
+        { solved: 0, correct: 0 }
+      )
+      result[label] = agg.solved > 0 ? Math.round((agg.correct / agg.solved) * 100) : null
+    })
+    return result
+  }, [stats])
+
+  const toggleSection = (label) =>
+    setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }))
+
   const handleSubjectStudy = (mainSubject, sub) => {
     setSubject(mainSubject)
     setRound('전체')
@@ -115,10 +127,7 @@ export default function Home() {
               </button>
             )}
           </div>
-          {/* 우상단: 로그인 상태 + 설정 */}
           <div className="flex items-center gap-2">
-
-            {/* 로그인 상태 표시 */}
             {authStatus === 'guest' ? (
               <LoginButton />
             ) : (
@@ -130,7 +139,6 @@ export default function Home() {
                   onClick={async () => {
                     const { error } = await supabase.auth.signOut()
                     if (error) console.warn('[GEP] 로그아웃 실패:', error.message)
-                    // SIGNED_OUT 이벤트가 clearAuth() 호출 — 백업으로 직접 호출
                     useAuthStore.getState().clearAuth()
                   }}
                   className="text-xs text-gray-400 hover:text-gray-600 px-2 py-2"
@@ -140,8 +148,6 @@ export default function Home() {
                 </button>
               </div>
             )}
-
-            {/* 설정 아이콘 버튼 */}
             <button
               onClick={() => setShowSettings(true)}
               className="text-gray-400 hover:text-gray-700 p-1"
@@ -152,11 +158,10 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
-
           </div>
         </div>
 
-        {/* 학습 현황 대시보드 — 메인 노출 */}
+        {/* 학습 현황 대시보드 */}
         <StatsPanel homeMode allStats={stats} />
 
         {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
@@ -173,44 +178,74 @@ export default function Home() {
           </button>
         )}
 
-        {/* 과목별 학습 목록 */}
-        {STUDY_SECTIONS.map((section) => (
-          <section key={section.label}>
-            <p className={`text-xs font-semibold mb-2 ${section.textColor}`}>
-              {section.label}
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {section.subs.map((sub) => {
-                const qCount  = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
-                const s       = stats.bySubject[sub]
-                const pct     = s && s.solved > 0
-                  ? Math.round((s.correct / s.solved) * 100)
-                  : null
-                const solved  = s?.solved ?? 0
-                return (
-                  <button
-                    key={sub}
-                    className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-gray-300 active:bg-gray-50 transition-colors"
-                    onClick={() => handleSubjectStudy(section.mainSubject, sub)}
-                  >
-                    <span className="flex-1 text-sm text-gray-800">{sub}</span>
-                    {isGuest ? (
-                      <span className="text-xs text-gray-400">
-                        {Math.min(solved, 30)}/30
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">{qCount}문제</span>
-                    )}
-                    <span className={`text-sm font-semibold w-16 text-right shrink-0 ${getAccuracyColor(pct)}`}>
-                      {pct !== null ? `${pct}%${pct < 40 ? ' ⚠️' : ''}` : '-'}
+        {/* 과목 선택 — 3개 아코디언 (기본 모두 접힘) */}
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-gray-500 px-1">과목 선택</p>
+          {STUDY_SECTIONS.map((section) => {
+            const isOpen = !!openSections[section.label]
+            const pct    = mainSubjectStats[section.label]
+            return (
+              <div key={section.label} className="rounded-xl overflow-hidden border border-gray-200">
+
+                {/* 아코디언 헤더 */}
+                <button
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  onClick={() => toggleSection(section.label)}
+                >
+                  <span className={`text-sm font-semibold ${section.textColor}`}>
+                    {section.label}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${getAccuracyColor(pct)}`}>
+                      {pct !== null ? `${pct}%` : '-'}
                     </span>
-                    <span className="text-gray-300 text-sm">›</span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-        ))}
+                    <span
+                      className="text-gray-400 text-sm transition-transform duration-200"
+                      style={{ display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'none' }}
+                    >
+                      ›
+                    </span>
+                  </div>
+                </button>
+
+                {/* 아코디언 바디 — 세부과목 */}
+                {isOpen && (
+                  <div className="border-t border-gray-100 flex flex-col">
+                    {section.subs.map((sub, idx) => {
+                      const qCount = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
+                      const s      = stats.bySubject[sub]
+                      const subPct = s && s.solved > 0
+                        ? Math.round((s.correct / s.solved) * 100)
+                        : null
+                      const solved = s?.solved ?? 0
+                      return (
+                        <button
+                          key={sub}
+                          className={`flex items-center gap-3 w-full text-left px-4 py-3 bg-white hover:bg-gray-50 active:bg-gray-50 transition-colors ${idx > 0 ? 'border-t border-gray-100' : ''}`}
+                          onClick={() => handleSubjectStudy(section.mainSubject, sub)}
+                        >
+                          <span className="flex-1 text-sm text-gray-700">{sub}</span>
+                          {isGuest ? (
+                            <span className="text-xs text-gray-400">
+                              {Math.min(solved, 30)}/30
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">{qCount}문제</span>
+                          )}
+                          <span className={`text-sm font-semibold w-14 text-right shrink-0 ${getAccuracyColor(subPct)}`}>
+                            {subPct !== null ? `${subPct}%${subPct < 40 ? ' ⚠️' : ''}` : '-'}
+                          </span>
+                          <span className="text-gray-300 text-sm">›</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+              </div>
+            )
+          })}
+        </div>
 
       </div>
 

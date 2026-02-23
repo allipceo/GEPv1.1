@@ -1,12 +1,10 @@
 /**
  * WrongReview.jsx — 틀린문제 모아풀기 페이지 (레벨2 전용)
  *
- * - Supabase attempts에서 is_correct=false 문제 목록 조회
- * - 로컬 questions 배열과 매핑하여 표시
- * - study_mode='wrong_review' 로 기록
- * - Question.jsx 흐름과 동일한 UX
- *
- * GEP_039 STEP3
+ * GEP_041:
+ *   - 진입 시 과목 선택 화면 (과목별 + 세부과목별 틀린 수 표시)
+ *   - 틀린 횟수 많은 순 정렬
+ *   - 헤더에 "N회 틀림" 표시
  */
 
 import { useState, useEffect } from 'react'
@@ -25,6 +23,28 @@ const SUBJECT_HEADER_BG = {
   '손보2부': 'bg-purple-600',
 }
 
+// 과목 선택 화면용 구성
+const SUBJECT_SECTIONS = [
+  {
+    label: '법령',
+    textColor: 'text-blue-600',
+    borderClass: 'border-blue-200 bg-blue-50',
+    subs: ['보험업법', '상법', '세제재무', '위험관리'],
+  },
+  {
+    label: '손보1부',
+    textColor: 'text-green-600',
+    borderClass: 'border-green-200 bg-green-50',
+    subs: ['보증보험', '연금저축', '자동차보험', '특종보험'],
+  },
+  {
+    label: '손보2부',
+    textColor: 'text-purple-600',
+    borderClass: 'border-purple-200 bg-purple-50',
+    subs: ['재보험', '항공우주', '해상보험', '화재보험'],
+  },
+]
+
 export default function WrongReview() {
   const navigate = useNavigate()
 
@@ -33,22 +53,26 @@ export default function WrongReview() {
   const authStatus   = useAuthStore((s) => s.authStatus)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
 
-  const [wrongQuestions, setWrongQuestions] = useState([])
-  const [currentIndex, setCurrentIndex]     = useState(0)
-  const [localAnswered, setLocalAnswered]   = useState(new Set())
-  const [answers, setAnswers]               = useState({})
-  const [recordedSet, setRecordedSet]       = useState(new Set())
-  const [isLoading, setIsLoading]           = useState(true)
-  const [error, setError]                   = useState(null)
+  // 전체 틀린문제 (wrongCount 포함, 과목 필터 전)
+  const [allWrongQuestions, setAllWrongQuestions] = useState([])
+  const [isLoading, setIsLoading]                 = useState(true)
+  const [error, setError]                         = useState(null)
+
+  // 과목 선택 상태 (null = 선택 화면)
+  const [selectedSubject, setSelectedSubject] = useState(null)
+
+  // 문제 풀기 상태
+  const [currentIndex, setCurrentIndex]   = useState(0)
+  const [localAnswered, setLocalAnswered] = useState(new Set())
+  const [answers, setAnswers]             = useState({})
+  const [recordedSet, setRecordedSet]     = useState(new Set())
 
   // 권한 가드 — 레벨2 미만이면 홈으로
   useEffect(() => {
-    if (authStatus !== 'authenticated' || serviceLevel < 2) {
-      navigate('/')
-    }
+    if (authStatus !== 'authenticated' || serviceLevel < 2) navigate('/')
   }, [authStatus, serviceLevel, navigate])
 
-  // 틀린문제 목록 로드
+  // 틀린문제 목록 로드 (틀린 횟수 카운트, 많은 순 정렬)
   useEffect(() => {
     if (!isReady || questions.length === 0) return
     if (authStatus !== 'authenticated') return
@@ -60,29 +84,31 @@ export default function WrongReview() {
           .from('attempts')
           .select('question_id')
           .eq('is_correct', false)
-          .order('attempted_at', { ascending: false })
 
         if (err) {
           setError('틀린문제를 불러올 수 없습니다.')
           return
         }
 
-        // 중복 제거 (question_id 기준, 순서 유지)
-        const seen = new Set()
-        const uniqueIds = []
+        // 틀린 횟수 카운트
+        const wrongCounts = {}
         for (const row of data) {
-          if (!seen.has(row.question_id)) {
-            seen.add(row.question_id)
-            uniqueIds.push(row.question_id)
-          }
+          wrongCounts[row.question_id] = (wrongCounts[row.question_id] ?? 0) + 1
         }
 
-        // 로컬 questions 배열에서 매핑 (없는 문제 제외)
-        const matched = uniqueIds
-          .map((id) => questions.find((q) => q.id === id))
+        // 틀린 횟수 많은 순 정렬
+        const sortedIds = Object.keys(wrongCounts)
+          .sort((a, b) => wrongCounts[b] - wrongCounts[a])
+
+        // 로컬 questions 매핑 + wrongCount 추가
+        const matched = sortedIds
+          .map((id) => {
+            const q = questions.find((q) => q.id === id)
+            return q ? { ...q, wrongCount: wrongCounts[id] } : null
+          })
           .filter(Boolean)
 
-        setWrongQuestions(matched)
+        setAllWrongQuestions(matched)
       } catch (e) {
         setError('네트워크 오류가 발생했습니다.')
       } finally {
@@ -93,7 +119,29 @@ export default function WrongReview() {
     load()
   }, [isReady, questions, authStatus])
 
-  // ── 로딩/에러/빈 상태 ────────────────────────────────
+  // 과목별 / 세부과목별 틀린문제 수
+  const wrongBySubject    = {}
+  const wrongBySubSubject = {}
+  for (const q of allWrongQuestions) {
+    wrongBySubject[q.subject]       = (wrongBySubject[q.subject] ?? 0) + 1
+    wrongBySubSubject[q.subSubject] = (wrongBySubSubject[q.subSubject] ?? 0) + 1
+  }
+
+  // 선택 과목의 문제 (이미 틀린 횟수 많은 순으로 정렬됨)
+  const wrongQuestions = selectedSubject
+    ? allWrongQuestions.filter((q) => q.subject === selectedSubject)
+    : []
+
+  // 과목 선택 핸들러
+  const handleSelectSubject = (subject) => {
+    setSelectedSubject(subject)
+    setCurrentIndex(0)
+    setLocalAnswered(new Set())
+    setAnswers({})
+    setRecordedSet(new Set())
+  }
+
+  // ── 로딩 / 에러 ──────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-gray-500 text-sm">
@@ -106,42 +154,124 @@ export default function WrongReview() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6">
         <p className="text-red-500 text-sm text-center">{error}</p>
-        <button
-          onClick={() => navigate('/')}
-          className="text-blue-600 underline text-sm"
-        >
+        <button onClick={() => navigate('/')} className="text-blue-600 underline text-sm">
           홈으로
         </button>
       </div>
     )
   }
 
+  // ── 과목 선택 화면 ────────────────────────────────────
+  if (!selectedSubject) {
+    return (
+      <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
+
+        {/* 헤더 */}
+        <div className="flex items-center justify-between">
+          <button
+            className="text-sm text-gray-500 hover:text-gray-700"
+            onClick={() => navigate('/')}
+          >
+            ← 홈
+          </button>
+          <h2 className="text-base font-bold text-gray-900">틀린문제 풀기</h2>
+          <span className="w-10" />
+        </div>
+
+        {allWrongQuestions.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16 px-6">
+            <p className="text-2xl">🎉</p>
+            <p className="text-gray-700 text-sm font-semibold text-center">
+              틀린문제가 없습니다!
+            </p>
+            <p className="text-gray-400 text-xs text-center">
+              계속 문제를 풀면 여기에 모아드릴게요.
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              className="mt-2 px-6 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+            >
+              홈으로
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500 -mt-1">
+              과목을 선택하세요 · 틀린 횟수 많은 순 정렬
+            </p>
+            <div className="flex flex-col gap-3">
+              {SUBJECT_SECTIONS.map((section) => {
+                const count   = wrongBySubject[section.label] ?? 0
+                const enabled = count > 0
+                return (
+                  <button
+                    key={section.label}
+                    onClick={() => enabled && handleSelectSubject(section.label)}
+                    disabled={!enabled}
+                    className={`w-full text-left rounded-xl border px-4 py-3 transition-colors ${
+                      enabled
+                        ? `${section.borderClass} hover:opacity-90 active:opacity-80`
+                        : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    {/* 과목 헤더 행 */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-bold ${enabled ? section.textColor : 'text-gray-400'}`}>
+                        {section.label}
+                      </span>
+                      <span className={`text-sm font-bold ${enabled ? section.textColor : 'text-gray-400'}`}>
+                        {count}개
+                      </span>
+                    </div>
+                    {/* 세부과목별 틀린 수 */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {section.subs.map((sub) => {
+                        const subCount = wrongBySubSubject[sub] ?? 0
+                        return (
+                          <span key={sub} className="text-xs text-gray-500">
+                            {sub}{' '}
+                            <span className={subCount > 0 ? 'font-semibold text-gray-700' : ''}>
+                              {subCount}개
+                            </span>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-gray-400 text-center -mt-1">
+              전체 {allWrongQuestions.length}문제
+            </p>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ── 선택 후 해당 과목 문제 없는 경우 ────────────────
   if (wrongQuestions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-6">
         <p className="text-2xl">🎉</p>
         <p className="text-gray-700 text-sm font-semibold text-center">
-          틀린문제가 없습니다!
-        </p>
-        <p className="text-gray-400 text-xs text-center">
-          계속 문제를 풀면 여기에 모아드릴게요.
+          {selectedSubject} 틀린문제가 없습니다!
         </p>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => setSelectedSubject(null)}
           className="mt-2 px-6 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
         >
-          홈으로
+          과목 선택으로
         </button>
       </div>
     )
   }
 
   // ── 문제 풀기 UI ─────────────────────────────────────
-  const question = wrongQuestions[currentIndex]
-  const displayAnswer = localAnswered.has(question.id)
-    ? (answers[question.id] ?? null)
-    : null
-  const headerBg = SUBJECT_HEADER_BG[question.subject] ?? 'bg-gray-600'
+  const question      = wrongQuestions[currentIndex]
+  const displayAnswer = localAnswered.has(question.id) ? (answers[question.id] ?? null) : null
+  const headerBg      = SUBJECT_HEADER_BG[question.subject] ?? 'bg-gray-600'
 
   const handleAnswer = async (num) => {
     if (localAnswered.has(question.id)) return
@@ -162,6 +292,10 @@ export default function WrongReview() {
   }
 
   const handlePrev = () => {
+    if (currentIndex === 0) {
+      setSelectedSubject(null)
+      return
+    }
     const prevId = wrongQuestions[currentIndex - 1]?.id
     if (prevId) {
       setLocalAnswered((prev) => {
@@ -188,15 +322,15 @@ export default function WrongReview() {
       <div className={`flex-shrink-0 flex justify-between items-center px-4 py-2 ${headerBg}`}>
         <button
           className="text-sm text-white/80 hover:text-white"
-          onClick={() => navigate('/')}
+          onClick={() => setSelectedSubject(null)}
         >
-          ← 홈
+          ← 과목
         </button>
         <span className="text-sm font-semibold text-white">
-          틀린문제 {currentIndex + 1}/{wrongQuestions.length}
+          {selectedSubject} {currentIndex + 1}/{wrongQuestions.length}
         </span>
         <span className="text-xs text-white/70">
-          {question.subSubject}
+          {question.wrongCount}회 틀림
         </span>
       </div>
 
@@ -222,11 +356,10 @@ export default function WrongReview() {
 
         <div className="flex gap-2 mt-1">
           <button
-            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm disabled:opacity-40"
+            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm"
             onClick={handlePrev}
-            disabled={currentIndex === 0}
           >
-            이전
+            {currentIndex === 0 ? '과목 선택' : '이전'}
           </button>
           <button
             className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm"
