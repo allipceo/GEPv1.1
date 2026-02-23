@@ -243,6 +243,20 @@ export default function Home() {
             {/* 학습 현황 패널 */}
             <StatsPanel homeMode allStats={stats} />
 
+            {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
+            {authStatus === 'authenticated' && serviceLevel >= 2 && (
+              <button
+                onClick={() => navigate('/wrong-review')}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-100 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📝</span>
+                  <span className="text-sm font-semibold text-red-700">틀린문제 풀기</span>
+                </div>
+                <span className="text-red-400 text-sm">›</span>
+              </button>
+            )}
+
             {STUDY_SECTIONS.map((section) => (
               <section key={section.label}>
                 <p className={`text-xs font-semibold mb-2 ${section.textColor}`}>

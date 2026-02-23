@@ -22,18 +22,20 @@ export const useAuthStore = create(
       authStatus:   'guest',   // 'guest' | 'authenticated'
       serviceLevel: 1,         // 1~5
       email:        null,      // 로그인 사용자 이메일
+      userId:       null,      // auth.uid() — Supabase INSERT용
       userFeatures: {
         canStats:    false,
         canWrongNote: false,
         canMockExam: false,
       },
 
-      // 로그인 시 호출 (email 파라미터 추가)
-      setAuth: (serviceLevel, userFeatures, email = null) => set({
+      // 로그인 시 호출 (email, userId 파라미터 추가)
+      setAuth: (serviceLevel, userFeatures, email = null, userId = null) => set({
         authStatus: 'authenticated',
         serviceLevel,
         userFeatures,
         email,
+        userId,
       }),
 
       // 로그아웃 시 호출
@@ -41,6 +43,7 @@ export const useAuthStore = create(
         authStatus:   'guest',
         serviceLevel: 1,
         email:        null,
+        userId:       null,
         userFeatures: {
           canStats:    false,
           canWrongNote: false,
@@ -93,7 +96,7 @@ export const useAuthStore = create(
                 canMockExam: serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL,
               }
 
-              get().setAuth(serviceLevel, features, user.email)
+              get().setAuth(serviceLevel, features, user.email, user.id)
 
             } else if (event === 'SIGNED_OUT') {
               get().clearAuth()

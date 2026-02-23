@@ -37,21 +37,36 @@ export const recordAttempt = async (statsStore, authState, payload) => {
   if (!canUseFeature(serviceLevel, FEATURE_FLAGS.STATS_MIN_LEVEL)) return
   if (!safeRound) return
 
+  const { userId } = authState
+  if (!userId) return
+
   try {
+    // attempts 원장 INSERT
     const { error } = await supabase.from('attempts').insert({
-      question_id:    question.id,
-      question_round: safeRound,
-      subject:        question.subject,
-      sub_subject:    question.subSubject,
-      study_mode:     studyMode,
+      user_id:         userId,
+      question_id:     question.id,
+      question_round:  safeRound,
+      subject:         question.subject,
+      sub_subject:     question.subSubject,
+      study_mode:      studyMode,
       selected_answer: selectedAnswer,
-      is_correct:     isCorrect,
-      exam_version:   '1.0',
-      service_level:  serviceLevel,
+      is_correct:      isCorrect,
+      exam_version:    '1.0',
+      service_level:   serviceLevel,
     })
 
     if (error) {
       console.warn('[GEP] attempts insert 실패:', error.message)
+      return
+    }
+
+    // question_stats 집계 캐시 UPSERT (RPC — 원자적 증가)
+    const { error: statsErr } = await supabase.rpc('upsert_question_stat', {
+      p_question_id: question.id,
+      p_is_correct:  isCorrect,
+    })
+    if (statsErr) {
+      console.warn('[GEP] question_stats upsert 실패:', statsErr.message)
     }
   } catch (err) {
     console.warn('[GEP] statsService 네트워크 오류:', err.message)

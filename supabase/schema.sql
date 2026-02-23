@@ -137,3 +137,27 @@ CREATE INDEX idx_attempts_question    ON attempts(question_id);
 CREATE INDEX idx_attempts_user_round  ON attempts(user_id, question_round);
 CREATE INDEX idx_attempts_user_subject ON attempts(user_id, sub_subject);
 CREATE INDEX idx_progress_user        ON progress(user_id, filter_key);
+
+-- ──────────────────────────────────────────────
+-- RPC 함수 — question_stats 원자적 증가
+-- ★ GEP_039 STEP3 추가: Supabase SQL Editor에서 별도 실행 필요
+-- ──────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION upsert_question_stat(
+  p_question_id TEXT,
+  p_is_correct  BOOLEAN
+) RETURNS VOID LANGUAGE plpgsql AS $$
+BEGIN
+  INSERT INTO question_stats (user_id, question_id, total_attempts, correct_count, last_attempted_at)
+  VALUES (
+    auth.uid(),
+    p_question_id,
+    1,
+    CASE WHEN p_is_correct THEN 1 ELSE 0 END,
+    NOW()
+  )
+  ON CONFLICT (user_id, question_id) DO UPDATE SET
+    total_attempts    = question_stats.total_attempts + 1,
+    correct_count     = question_stats.correct_count + CASE WHEN p_is_correct THEN 1 ELSE 0 END,
+    last_attempted_at = NOW();
+END;
+$$;

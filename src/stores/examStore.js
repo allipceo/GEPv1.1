@@ -13,12 +13,15 @@
 
 import { create } from 'zustand';
 import { loadExams } from '../utils/loadExams';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from './authStore';
 
 const STORAGE_KEY = 'gep:v1:examStore';
 
 // ── 진도 맵 키 생성 ────────────────────────────────────
-function makeProgressKey(round, subject) {
-  return `${round}_${subject}`;
+// subSubject가 있으면 키에 포함 (Issue-3: 세부과목별 이어풀기 버그 수정)
+function makeProgressKey(round, subject, subSubject = null) {
+  return subSubject ? `${round}_${subject}_${subSubject}` : `${round}_${subject}`;
 }
 
 // ── Selector (파생값, 상태 아님) ──────────────────────
@@ -149,27 +152,41 @@ const useExamStore = create((set, get) => ({
     saveToStorage(get());
   },
 
-  /** 세부과목 변경 → currentIndex 리셋 */
+  /** 세부과목 변경 → progressMap에서 저장된 인덱스 로드 (Issue-3 수정) */
   setSubSubject: (sub) => {
-    set({ selectedSubSubject: sub, currentIndex: 0 });
+    const state = get();
+    const key = makeProgressKey(state.selectedRound, state.selectedSubject, sub);
+    const savedIndex = sub ? (state.progressMap[key] ?? 0) : 0;
+    set({ selectedSubSubject: sub, currentIndex: savedIndex });
     saveToStorage(get());
   },
 
-  /** 문제 인덱스 이동 — progressMap에 현재 과목/회차 키로 자동 저장 */
+  /** 문제 인덱스 이동 — progressMap에 현재 과목/회차/세부과목 키로 자동 저장 */
   setCurrentIndex: (n) => {
     const state   = get();
     const filtered = selectFilteredQuestions(state);
     const clamped  = Math.max(0, Math.min(n, filtered.length - 1));
-    const key      = makeProgressKey(state.selectedRound, state.selectedSubject);
+    const key      = makeProgressKey(state.selectedRound, state.selectedSubject, state.selectedSubSubject);
     const newProgressMap = { ...state.progressMap, [key]: clamped };
     set({ currentIndex: clamped, progressMap: newProgressMap });
     saveToStorage(get());
+
+    // 레벨2+ — Supabase progress 테이블 동기화 (fire-and-forget)
+    const auth = useAuthStore.getState();
+    if (auth.authStatus === 'authenticated' && auth.serviceLevel >= 2 && auth.userId) {
+      supabase.from('progress').upsert(
+        { user_id: auth.userId, filter_key: key, current_index: clamped, last_updated: new Date().toISOString() },
+        { onConflict: 'user_id,filter_key' }
+      ).then(({ error }) => {
+        if (error) console.warn('[GEP] progress sync 실패:', error.message)
+      }).catch(() => {})
+    }
   },
 
-  /** 이어풀기: progressMap에서 현재 과목/회차의 저장된 인덱스 로드 */
+  /** 이어풀기: progressMap에서 현재 과목/회차/세부과목의 저장된 인덱스 로드 */
   resumeProgress: () => {
     const state = get();
-    const key = makeProgressKey(state.selectedRound, state.selectedSubject);
+    const key = makeProgressKey(state.selectedRound, state.selectedSubject, state.selectedSubSubject);
     const savedIndex = state.progressMap[key] ?? state.currentIndex;
     set({ currentIndex: savedIndex });
   },

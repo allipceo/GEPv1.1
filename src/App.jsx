@@ -10,6 +10,7 @@ import { useAuthStore } from './stores/authStore'
 import Home from './pages/Home'
 import Question from './pages/Question'
 import Result from './pages/Result'
+import WrongReview from './pages/WrongReview'
 
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/question" element={<Question />} />
         <Route path="/result" element={<Result />} />
+        <Route path="/wrong-review" element={<WrongReview />} />
       </Routes>
     </BrowserRouter>
   )
