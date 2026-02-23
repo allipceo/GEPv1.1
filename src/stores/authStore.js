@@ -64,7 +64,13 @@ export const useAuthStore = create(
       initAuthListener: () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user) {
+            // SIGNED_IN / INITIAL_SESSION / TOKEN_REFRESHED — 세션 있으면 인증 처리
+            const isAuthEvent =
+              event === 'SIGNED_IN' ||
+              event === 'INITIAL_SESSION' ||
+              event === 'TOKEN_REFRESHED'
+
+            if (isAuthEvent && session?.user) {
               const user = session.user
 
               // users 테이블에서 service_level 조회
@@ -77,7 +83,7 @@ export const useAuthStore = create(
               let serviceLevel = 1
 
               if (error || !data) {
-                // 신규 유저 — INSERT (user_id = auth.uid() 로 RLS 통과)
+                // 신규 유저 — INSERT
                 const { error: insertErr } = await supabase
                   .from('users')
                   .insert({ user_id: user.id, service_level: 1 })
@@ -91,14 +97,15 @@ export const useAuthStore = create(
               }
 
               const features = {
-                canStats:    serviceLevel >= FEATURE_FLAGS.STATS_MIN_LEVEL,
+                canStats:     serviceLevel >= FEATURE_FLAGS.STATS_MIN_LEVEL,
                 canWrongNote: serviceLevel >= FEATURE_FLAGS.WRONGNOTE_MIN_LEVEL,
-                canMockExam: serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL,
+                canMockExam:  serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL,
               }
 
               get().setAuth(serviceLevel, features, user.email, user.id)
 
-            } else if (event === 'SIGNED_OUT') {
+            } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+              // 세션 없는 INITIAL_SESSION = 로그인 안 된 상태 → 초기화
               get().clearAuth()
             }
           }

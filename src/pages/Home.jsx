@@ -9,34 +9,10 @@ import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
 import useStatsStore from '../stores/statsStore'
 import Settings, { loadSettings } from '../components/Settings'
-import DdayBanner from '../components/DdayBanner'
-import ProgressStats from '../components/ProgressStats'
-import TodayStats from '../components/TodayStats'
-import SubjectStats from '../components/SubjectStats'
 import StatsPanel from '../components/StatsPanel'
 import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
-
-const ROUNDS   = [23, 24, 25, 26, 27, 28, 29, 30, 31]
-const SUBJECTS = ['법령', '손보1부', '손보2부']
-
-// 과목별 컬러
-const SUBJECT_ACTIVE = {
-  '법령':   'bg-blue-600 text-white border-blue-600',
-  '손보1부': 'bg-green-600 text-white border-green-600',
-  '손보2부': 'bg-purple-600 text-white border-purple-600',
-}
-const SUBJECT_INACTIVE = {
-  '법령':   'hover:border-blue-400',
-  '손보1부': 'hover:border-green-400',
-  '손보2부': 'hover:border-purple-400',
-}
-const SUBJECT_START_BTN = {
-  '법령':   'bg-blue-600 hover:bg-blue-700',
-  '손보1부': 'bg-green-600 hover:bg-green-700',
-  '손보2부': 'bg-purple-600 hover:bg-purple-700',
-}
 
 // 과목별 학습 탭 — 12과목 구성
 const STUDY_SECTIONS = [
@@ -74,24 +50,15 @@ function calcDday(examDate) {
 export default function Home() {
   const navigate = useNavigate()
 
-  const selectedRound      = useExamStore((s) => s.selectedRound)
   const selectedSubject    = useExamStore((s) => s.selectedSubject)
-  const selectedSubSubject = useExamStore((s) => s.selectedSubSubject)
-  const setRound           = useExamStore((s) => s.setRound)
   const setSubject         = useExamStore((s) => s.setSubject)
+  const setRound           = useExamStore((s) => s.setRound)
   const setSubSubject      = useExamStore((s) => s.setSubSubject)
-  const setCurrentIndex    = useExamStore((s) => s.setCurrentIndex)
-  const resumeProgress     = useExamStore((s) => s.resumeProgress)
-  const currentIndex       = useExamStore((s) => s.currentIndex)
-  const answers            = useExamStore((s) => s.answers)
-  const progressMap        = useExamStore((s) => s.progressMap)
-  const isReady            = useExamStore((s) => s.isReady)
   const questions          = useExamStore((s) => s.questions)
 
   // 설정 상태 (localStorage)
   const [settings, setSettings]         = useState({ name: '', examDate: '' })
   const [showSettings, setShowSettings] = useState(false)
-  const [activeTab, setActiveTab]       = useState('학습')  // '학습' | '회차'
 
   // 앱 시작 시 설정 자동 로드
   useEffect(() => {
@@ -102,8 +69,6 @@ export default function Home() {
 
   // statsStore 연동
   const stats = useStatsStore((s) => s.stats)
-  const today = new Date().toISOString().slice(0, 10)
-  const todayStats = stats.daily[today] ?? { solved: 0, correct: 0 }
 
   // authStore — 로그인 상태 + 게스트 제한 판별
   const authStatus   = useAuthStore((s) => s.authStatus)
@@ -111,38 +76,7 @@ export default function Home() {
   const email        = useAuthStore((s) => s.email)
   const isGuest      = authStatus === 'guest' && serviceLevel < 2
 
-  // filteredQuestions (round='전체' 지원)
-  const filteredQuestions = useMemo(
-    () =>
-      questions.filter((q) => {
-        if (q.subject !== selectedSubject) return false
-        if (selectedRound !== '전체' && q.round !== selectedRound) return false
-        if (selectedSubSubject && q.subSubject !== selectedSubSubject) return false
-        return true
-      }),
-    [questions, selectedSubject, selectedRound, selectedSubSubject]
-  )
-
-  // 세부과목 목록
-  const LAW_SUBSUB = ['보험업법', '상법', '세제재무', '위험관리']
-  const subSubjectOptions = useMemo(() => {
-    if (selectedSubject === '법령') return ['전체', ...LAW_SUBSUB]
-    const source = questions.filter((q) => q.subject === selectedSubject)
-    const set = new Set(source.map((q) => q.subSubject).filter(Boolean))
-    return ['전체', ...[...set].sort((a, b) => a.localeCompare(b, 'ko'))]
-  }, [questions, selectedSubject])
-
-  // 현재 과목/회차의 progressMap 저장 인덱스
-  const progressKey  = `${selectedRound}_${selectedSubject}`
-  const resumeIndex  = progressMap[progressKey] ?? 0
-
-  // 이어풀기 표시 조건: progressMap에 진도가 있거나 answers가 있을 때
-  const showResume =
-    isReady &&
-    filteredQuestions.length > 0 &&
-    (resumeIndex > 0 || Object.keys(answers).length > 0)
-
-  // 세부과목별 문제 수 (과목별 학습 탭용)
+  // 세부과목별 문제 수
   const subjectQCounts = useMemo(() => {
     const counts = {}
     questions.forEach((q) => {
@@ -193,8 +127,13 @@ export default function Home() {
                   {email?.slice(0, 2) ?? '?'}
                 </span>
                 <button
-                  onClick={() => supabase.auth.signOut()}
-                  className="text-xs text-gray-400 hover:text-gray-600 px-1 py-1"
+                  onClick={async () => {
+                    const { error } = await supabase.auth.signOut()
+                    if (error) console.warn('[GEP] 로그아웃 실패:', error.message)
+                    // SIGNED_OUT 이벤트가 clearAuth() 호출 — 백업으로 직접 호출
+                    useAuthStore.getState().clearAuth()
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-600 px-2 py-2"
                   style={{ minHeight: '44px' }}
                 >
                   로그아웃
@@ -217,175 +156,61 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 탭: 과목별 학습 | 회차별 풀기 */}
-        <div className="flex bg-gray-100 rounded-xl p-1">
+        {/* 학습 현황 대시보드 — 메인 노출 */}
+        <StatsPanel homeMode allStats={stats} />
+
+        {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
+        {authStatus === 'authenticated' && serviceLevel >= 2 && (
           <button
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
-              activeTab === '학습' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
-            }`}
-            onClick={() => setActiveTab('학습')}
+            onClick={() => navigate('/wrong-review')}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-100 transition-colors"
           >
-            과목별 학습
-          </button>
-          <button
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
-              activeTab === '회차' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
-            }`}
-            onClick={() => setActiveTab('회차')}
-          >
-            회차별 풀기
-          </button>
-        </div>
-
-        {/* ── 과목별 학습 탭 ── */}
-        {activeTab === '학습' && (
-          <>
-            {/* 학습 현황 패널 */}
-            <StatsPanel homeMode allStats={stats} />
-
-            {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
-            {authStatus === 'authenticated' && serviceLevel >= 2 && (
-              <button
-                onClick={() => navigate('/wrong-review')}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-100 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-base">📝</span>
-                  <span className="text-sm font-semibold text-red-700">틀린문제 풀기</span>
-                </div>
-                <span className="text-red-400 text-sm">›</span>
-              </button>
-            )}
-
-            {STUDY_SECTIONS.map((section) => (
-              <section key={section.label}>
-                <p className={`text-xs font-semibold mb-2 ${section.textColor}`}>
-                  {section.label}
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {section.subs.map((sub) => {
-                    const qCount  = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
-                    const s       = stats.bySubject[sub]
-                    const pct     = s && s.solved > 0
-                      ? Math.round((s.correct / s.solved) * 100)
-                      : null
-                    const solved  = s?.solved ?? 0
-                    return (
-                      <button
-                        key={sub}
-                        className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-gray-300 active:bg-gray-50 transition-colors"
-                        onClick={() => handleSubjectStudy(section.mainSubject, sub)}
-                      >
-                        <span className="flex-1 text-sm text-gray-800">{sub}</span>
-                        {/* 게스트: N/30 진행률 표시 */}
-                        {isGuest ? (
-                          <span className="text-xs text-gray-400">
-                            {Math.min(solved, 30)}/30
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">{qCount}문제</span>
-                        )}
-                        <span className={`text-sm font-semibold w-16 text-right shrink-0 ${getAccuracyColor(pct)}`}>
-                          {pct !== null ? `${pct}%${pct < 40 ? ' ⚠️' : ''}` : '-'}
-                        </span>
-                        <span className="text-gray-300 text-sm">›</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
-          </>
-        )}
-
-        {/* ── 회차별 풀기 탭 (기존 내용 그대로) ── */}
-        {activeTab === '회차' && (
-          <>
-            {/* 통계 대시보드 */}
-            <section className="bg-gray-50 rounded-xl p-4 flex flex-col gap-4 border border-gray-100">
-              <DdayBanner name={settings.name} dday={dday} />
-              <div className="border-t border-gray-200" />
-              <ProgressStats total={stats.total} />
-              <TodayStats daily={todayStats} />
-              <SubjectStats bySubject={stats.bySubject} />
-            </section>
-
-            {/* 회차 선택 */}
-            <section>
-              <p className="text-xs font-medium text-gray-500 mb-2">회차 선택</p>
-              <div className="flex flex-wrap gap-2">
-                {ROUNDS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRound(r)}
-                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                      selectedRound === r
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : `bg-white text-gray-700 border-gray-300 ${SUBJECT_INACTIVE[selectedSubject]}`
-                    }`}
-                  >
-                    {r}회
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* 과목 선택 */}
-            <section>
-              <p className="text-xs font-medium text-gray-500 mb-2">과목 선택</p>
-              <div className="flex gap-2">
-                {SUBJECTS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => { setSubject(s); setSubSubject(null) }}
-                    className={`flex-1 py-2 rounded-lg text-sm border transition-colors ${
-                      selectedSubject === s
-                        ? SUBJECT_ACTIVE[s]
-                        : `bg-white text-gray-700 border-gray-300 ${SUBJECT_INACTIVE[s]}`
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* 세부과목 드롭다운 */}
-            <section>
-              <p className="text-xs font-medium text-gray-500 mb-2">세부과목</p>
-              <select
-                value={selectedSubSubject ?? '전체'}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setSubSubject(val === '전체' ? null : val)
-                }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white"
-              >
-                {subSubjectOptions.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </section>
-
-            {/* 하단 버튼: 이어풀기(2/3) + 처음부터(1/3) */}
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => { resumeProgress(); navigate('/question') }}
-                className={`col-span-2 py-3 rounded-xl text-white font-semibold text-base transition-colors ${SUBJECT_START_BTN[selectedSubject]}`}
-              >
-                {resumeIndex > 0
-                  ? `이어풀기 (${resumeIndex + 1}/${filteredQuestions.length})`
-                  : '이어풀기'}
-              </button>
-              <button
-                onClick={() => { setCurrentIndex(0); navigate('/question') }}
-                className="col-span-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-base"
-              >
-                처음부터
-              </button>
+            <div className="flex items-center gap-2">
+              <span className="text-base">📝</span>
+              <span className="text-sm font-semibold text-red-700">틀린문제 풀기</span>
             </div>
-          </>
+            <span className="text-red-400 text-sm">›</span>
+          </button>
         )}
+
+        {/* 과목별 학습 목록 */}
+        {STUDY_SECTIONS.map((section) => (
+          <section key={section.label}>
+            <p className={`text-xs font-semibold mb-2 ${section.textColor}`}>
+              {section.label}
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {section.subs.map((sub) => {
+                const qCount  = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
+                const s       = stats.bySubject[sub]
+                const pct     = s && s.solved > 0
+                  ? Math.round((s.correct / s.solved) * 100)
+                  : null
+                const solved  = s?.solved ?? 0
+                return (
+                  <button
+                    key={sub}
+                    className="flex items-center gap-3 w-full text-left px-3 py-3 rounded-lg bg-white border border-gray-200 hover:border-gray-300 active:bg-gray-50 transition-colors"
+                    onClick={() => handleSubjectStudy(section.mainSubject, sub)}
+                  >
+                    <span className="flex-1 text-sm text-gray-800">{sub}</span>
+                    {isGuest ? (
+                      <span className="text-xs text-gray-400">
+                        {Math.min(solved, 30)}/30
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">{qCount}문제</span>
+                    )}
+                    <span className={`text-sm font-semibold w-16 text-right shrink-0 ${getAccuracyColor(pct)}`}>
+                      {pct !== null ? `${pct}%${pct < 40 ? ' ⚠️' : ''}` : '-'}
+                    </span>
+                    <span className="text-gray-300 text-sm">›</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        ))}
 
       </div>
 
