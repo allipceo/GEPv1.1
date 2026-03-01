@@ -322,6 +322,7 @@ export const mockExamSupabase = {
           totalAverage:    session.total_average ?? 0,
           isPass:          session.is_pass ?? false,
           part1Done:       session.part1_completed,
+          attemptNumber:   session.attempt_number ?? 1,
           progressPercent: session.is_complete
             ? 100
             : session.part1_completed ? 50 : 20,

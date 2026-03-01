@@ -208,6 +208,8 @@ export default function MockExamQuiz() {
   const [showExitModal,    setShowExitModal]    = useState(false)
   const [showPalette,      setShowPalette]      = useState(false)
   const [isTimeoutSubmit,  setIsTimeoutSubmit]  = useState(false)
+  const [isSubmitting,     setIsSubmitting]     = useState(false)
+  const [savedFlash,       setSavedFlash]       = useState(false)
 
   const startedRef   = useRef(false)
   const prevIndexRef = useRef(-1)
@@ -276,11 +278,13 @@ export default function MockExamQuiz() {
   // ── 핸들러 ────────────────────────────────────────────────────────────────
   function handleManualSave() {
     saveProgress(round, part)
-    // 간단한 피드백 (STEP 5에서 Supabase 백업 추가)
-    alert('저장되었습니다.')
+    setSavedFlash(true)
+    setTimeout(() => setSavedFlash(false), 1500)
   }
 
   function handleSubmit() {
+    if (isSubmitting) return
+    setIsSubmitting(true)
     const store       = useMockExamStore.getState()
     const elapsedTime = store.getElapsedTime()
     const scores      = calculateScore(answers, questions)
@@ -387,10 +391,15 @@ export default function MockExamQuiz() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleManualSave}
-              className="text-white/70 hover:text-white text-lg"
+              className="text-white/70 hover:text-white text-lg relative"
               title="저장"
             >
               💾
+              {savedFlash && (
+                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-white/90 whitespace-nowrap font-semibold">
+                  저장됨
+                </span>
+              )}
             </button>
             <button
               onClick={() => setShowPalette(p => !p)}

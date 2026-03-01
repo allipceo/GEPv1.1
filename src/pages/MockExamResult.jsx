@@ -14,7 +14,7 @@
  */
 
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
-import { checkPass, calcAverage, loadResult, PROGRESS_LS_KEY } from '../services/mockExamService'
+import { checkPass, calcAverage, loadResult, RESULT_LS_KEY, PROGRESS_LS_KEY } from '../services/mockExamService'
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 function formatDuration(seconds) {
@@ -215,6 +215,8 @@ function FinalResult({ round, part1Result, part2Result, navigate }) {
     try {
       localStorage.removeItem(PROGRESS_LS_KEY(round, 'part1'))
       localStorage.removeItem(PROGRESS_LS_KEY(round, 'part2'))
+      localStorage.removeItem(RESULT_LS_KEY(round, 'part1'))
+      localStorage.removeItem(RESULT_LS_KEY(round, 'part2'))
     } catch (_) {}
     navigate(`/mock/${round}/part1`)
   }
