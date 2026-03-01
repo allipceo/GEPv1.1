@@ -15,6 +15,11 @@ import OXHome from './pages/OXHome'
 import OXSubject from './pages/OXSubject'
 import OXQuiz from './pages/OXQuiz'
 import OXReview from './pages/OXReview'
+import MockExamHome from './pages/MockExamHome'
+import MockExamQuiz from './pages/MockExamQuiz'
+import MockExamResult from './pages/MockExamResult'
+import MockExamBreak from './pages/MockExamBreak'
+import MockExamStats from './pages/MockExamStats'
 
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
@@ -37,6 +42,12 @@ export default function App() {
         <Route path="/ox/:subjectKey" element={<OXSubject />} />
         <Route path="/ox/:subjectKey/:subSubject" element={<OXQuiz />} />
         <Route path="/ox/:subjectKey/:subSubject/review" element={<OXReview />} />
+        <Route path="/mock" element={<MockExamHome />} />
+        <Route path="/mock/:round/:part" element={<MockExamQuiz />} />
+        <Route path="/mock/:round/:part/result" element={<MockExamResult />} />
+        <Route path="/mock/:round/result" element={<MockExamResult />} />
+        <Route path="/mock/:round/break" element={<MockExamBreak />} />
+        <Route path="/mock/stats" element={<MockExamStats />} />
       </Routes>
     </BrowserRouter>
   )

@@ -6,7 +6,7 @@
 export const FEATURE_FLAGS = {
   STATS_MIN_LEVEL:          2,
   WRONGNOTE_MIN_LEVEL:      3,
-  MOCKEXAM_MIN_LEVEL:       5,
+  MOCKEXAM_MIN_LEVEL:       4,  // GEP_038 기준
   ADVANCED_STATS_MIN_LEVEL: 3,
 };
 
