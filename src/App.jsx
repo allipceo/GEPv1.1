@@ -20,6 +20,10 @@ import MockExamQuiz from './pages/MockExamQuiz'
 import MockExamResult from './pages/MockExamResult'
 import MockExamBreak from './pages/MockExamBreak'
 import MockExamStats from './pages/MockExamStats'
+import CustomMockHome from './pages/CustomMockHome'
+import CustomMockQuiz from './pages/CustomMockQuiz'
+import CustomMockResult from './pages/CustomMockResult'
+import CustomMockStats from './pages/CustomMockStats'
 
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
@@ -48,6 +52,11 @@ export default function App() {
         <Route path="/mock/:round/result" element={<MockExamResult />} />
         <Route path="/mock/:round/break" element={<MockExamBreak />} />
         <Route path="/mock/stats" element={<MockExamStats />} />
+        <Route path="/custom-mock" element={<CustomMockHome />} />
+        <Route path="/custom-mock/:sessionId/part1" element={<CustomMockQuiz />} />
+        <Route path="/custom-mock/:sessionId/part2" element={<CustomMockQuiz />} />
+        <Route path="/custom-mock/:sessionId/result" element={<CustomMockResult />} />
+        <Route path="/custom-mock/stats" element={<CustomMockStats />} />
       </Routes>
     </BrowserRouter>
   )
