@@ -19,6 +19,8 @@ import {
   checkPass,
 } from '../services/mockExamService'
 import { mockExamConfig } from '../config/mockExamConfig'
+import PredictionCard      from '../components/stats/PredictionCard'
+import PassProbabilityCard from '../components/stats/PassProbabilityCard'
 
 // ── 게스트 통계 구성 (localStorage) ──────────────────────────────────────────
 function buildGuestStats() {
@@ -305,7 +307,13 @@ export default function MockExamStats() {
 
       {!isLoading && totalAttempts > 0 && (
         <>
-          {/* ── 전체 요약 ───────────────────────────────────────────────────── */}
+          {/* ── 1. PredictionCard + PassProbabilityCard (2열) ──────────────── */}
+          <div className="grid grid-cols-2 gap-3">
+            <PredictionCard      records={records} />
+            <PassProbabilityCard records={records} />
+          </div>
+
+          {/* ── 2. 전체 요약 ─────────────────────────────────────────────────── */}
           <div className="flex flex-col gap-3">
             <p className="text-xs font-bold text-gray-500 px-1">전체 요약</p>
             <div className="grid grid-cols-3 gap-2">

@@ -1,14 +1,12 @@
 /**
  * src/pages/CustomMockStats.jsx — /custom-mock/stats
  * 맞춤 모의고사 통합 통계
- * GEP_078 Phase 6-1 STEP 5
+ * GEP_078 Phase 6-1 STEP 5 / GEP_088 Phase 6-2 STEP 3
  *
- * MockExamStats.jsx 80% 재활용
- * 확장:
- *   - 필터: 전체 / 원본만 / 맞춤만
- *   - DualLineChart: 원본(blue-500) + 맞춤(green-500 점선)
- *   - 합격 예측: 최근 5회 평균 기반
- *   - 약점 수렴 분석: 세부과목별 누적 정답률
+ * STEP 3 변경사항:
+ *   - PredictionCard + PassProbabilityCard (2열) 상단 추가
+ *   - WeaknessHeatmap / DifficultyAnalysis / StudyRoadmap 추가
+ *   - 기존 합격 예측 / 약점 수렴 분석 → 신규 컴포넌트로 대체
  */
 
 import { useEffect, useState } from 'react'
@@ -25,6 +23,11 @@ import {
   analyzeWeakness,
 } from '../services/customMockService'
 import { mockExamConfig } from '../config/mockExamConfig'
+import PredictionCard      from '../components/stats/PredictionCard'
+import PassProbabilityCard from '../components/stats/PassProbabilityCard'
+import WeaknessHeatmap     from '../components/stats/WeaknessHeatmap'
+import DifficultyAnalysis  from '../components/stats/DifficultyAnalysis'
+import StudyRoadmap        from '../components/stats/StudyRoadmap'
 
 // ── 필터 상수 ─────────────────────────────────────────────────────────────────
 const FILTERS = ['전체', '원본만', '맞춤만']
@@ -48,6 +51,16 @@ function buildGuestOriginalStats() {
   return list
 }
 
+// ── weaknessAnalysis → questionAttempts 변환 (analyzeWeaknessBySubject 입력 형식) ──
+// weaknessAnalysis.subjectStats = {'보험업법': {accuracy, total, correct}, ...}
+function buildSyntheticAttempts(weaknessAnalysis) {
+  if (!weaknessAnalysis?.subjectStats) return []
+  return Object.entries(weaknessAnalysis.subjectStats).flatMap(([sub, stat]) => [
+    ...Array.from({ length: stat.correct              }, () => ({ sub_subject: sub, is_correct: true  })),
+    ...Array.from({ length: stat.total - stat.correct }, () => ({ sub_subject: sub, is_correct: false })),
+  ])
+}
+
 // ── SVG 차트 상수 ─────────────────────────────────────────────────────────────
 const CHART_W = 320
 const CHART_H = 160
@@ -66,7 +79,6 @@ function scoreToY(score) {
 function DualLineChart({ originalRecords, customRecords }) {
   const yTicks = [0, 40, 60, 80, 100]
 
-  // 각 시리즈별 점 좌표 계산 (X: 인덱스 비례)
   function calcPoints(records) {
     const total = Math.max(records.length - 1, 1)
     return records.map((r, idx) => ({
@@ -96,7 +108,6 @@ function DualLineChart({ originalRecords, customRecords }) {
       style={{ height: 'auto', maxHeight: '200px' }}
       aria-label="원본·맞춤 점수 추이 차트"
     >
-      {/* Y축 눈금선 + 레이블 */}
       {yTicks.map(tick => {
         const y        = scoreToY(tick)
         const isPass60 = tick === 60
@@ -120,7 +131,6 @@ function DualLineChart({ originalRecords, customRecords }) {
         )
       })}
 
-      {/* 원본 라인 (blue-500, 실선) */}
       {origPath && (
         <path
           d={origPath} fill="none"
@@ -137,7 +147,6 @@ function DualLineChart({ originalRecords, customRecords }) {
         />
       ))}
 
-      {/* 맞춤 라인 (green-500, 점선 + 사각형 포인트) */}
       {customPath && (
         <path
           d={customPath} fill="none"
@@ -156,7 +165,6 @@ function DualLineChart({ originalRecords, customRecords }) {
         />
       ))}
 
-      {/* 데이터 없음 */}
       {!hasData && (
         <text
           x={CHART_W / 2} y={CHART_H / 2}
@@ -169,7 +177,7 @@ function DualLineChart({ originalRecords, customRecords }) {
   )
 }
 
-// ── 요약 카드 (MockExamStats 재활용) ──────────────────────────────────────────
+// ── 요약 카드 ─────────────────────────────────────────────────────────────────
 function SummaryCard({ label, value, sub, color = 'text-gray-900' }) {
   return (
     <div className="flex flex-col items-center gap-0.5 rounded-xl bg-gray-50 border border-gray-100 px-3 py-4">
@@ -212,25 +220,6 @@ function HistoryRow({ record }) {
   )
 }
 
-// ── 합격 예측 계산 ─────────────────────────────────────────────────────────────
-function calcPassPrediction(records) {
-  if (records.length === 0) return null
-  const recent   = records.slice(-5)
-  const avgScore = recent.reduce((sum, r) => sum + Number(r.totalAverage), 0) / recent.length
-
-  // 평균 점수 → 합격 확률 (60점 기준)
-  const diff = avgScore - 60
-  let probability
-  if      (diff >= 10) probability = 95
-  else if (diff >= 5)  probability = 85
-  else if (diff >= 0)  probability = 65
-  else if (diff >= -5) probability = 40
-  else if (diff >= -10) probability = 20
-  else                  probability = 10
-
-  return { avgScore: Math.round(avgScore * 10) / 10, probability, count: recent.length }
-}
-
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
 export default function CustomMockStats() {
   const navigate   = useNavigate()
@@ -240,14 +229,13 @@ export default function CustomMockStats() {
   const [originalRecords,  setOriginalRecords]  = useState([])
   const [customRecords,    setCustomRecords]     = useState([])
   const [weaknessAnalysis, setWeaknessAnalysis]  = useState(null)
-  const [filter,   setFilter]   = useState('전체')
-  const [isLoading, setIsLoading] = useState(true)
+  const [filter,           setFilter]            = useState('전체')
+  const [isLoading,        setIsLoading]         = useState(true)
 
   // ── 데이터 로드 ──────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       try {
-        // 1. 원본 모의고사 이력
         if (authStatus === 'authenticated' && userId) {
           const history   = await mockExamSupabase.getSessionHistory(userId)
           const completed = Object.entries(history)
@@ -265,7 +253,6 @@ export default function CustomMockStats() {
           setOriginalRecords(buildGuestOriginalStats())
         }
 
-        // 2. 맞춤 모의고사 이력 (레벨5 = 항상 인증 회원)
         if (userId) {
           const customHistory = await customMockSupabase.getSessionHistory(userId)
           const custom = [...customHistory].reverse().map((s, idx) => ({
@@ -280,7 +267,6 @@ export default function CustomMockStats() {
           setCustomRecords(custom)
         }
 
-        // 3. 약점 분석 (세부과목 정답률)
         if (userId) {
           const analysis = await analyzeWeakness(userId)
           setWeaknessAnalysis(analysis)
@@ -309,14 +295,8 @@ export default function CustomMockStats() {
     ? Math.round((allFiltered.reduce((sum, r) => sum + Number(r.totalAverage), 0) / totalAttempts) * 10) / 10
     : 0
 
-  const prediction = calcPassPrediction(allFiltered)
-
-  // 약점 수렴 분석: 정답률 낮은 순 상위 6개 세부과목
-  const weaknessList = weaknessAnalysis
-    ? Object.entries(weaknessAnalysis.subjectStats)
-        .sort((a, b) => a[1].accuracy - b[1].accuracy)
-        .slice(0, 6)
-    : []
+  // weaknessAnalysis → WeaknessHeatmap / StudyRoadmap 용 questionAttempts 변환
+  const syntheticAttempts = buildSyntheticAttempts(weaknessAnalysis)
 
   // ── 렌더 ─────────────────────────────────────────────────────────────────────
   return (
@@ -421,7 +401,13 @@ export default function CustomMockStats() {
 
           {totalAttempts > 0 && (
             <>
-              {/* ── 전체 요약 ───────────────────────────────────────────────── */}
+              {/* ── 1. PredictionCard + PassProbabilityCard (2열) ────────────── */}
+              <div className="grid grid-cols-2 gap-3">
+                <PredictionCard      records={allFiltered} />
+                <PassProbabilityCard records={allFiltered} />
+              </div>
+
+              {/* ── 2. 전체 요약 ─────────────────────────────────────────────── */}
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-bold text-gray-500 px-1">전체 요약</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -441,7 +427,7 @@ export default function CustomMockStats() {
                 </div>
               </div>
 
-              {/* ── 점수 추이 차트 ──────────────────────────────────────────── */}
+              {/* ── 3. 점수 추이 차트 ────────────────────────────────────────── */}
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-bold text-gray-500 px-1">📈 점수 추이</p>
                 <div className="rounded-2xl bg-white border border-gray-200 px-3 py-4">
@@ -449,7 +435,6 @@ export default function CustomMockStats() {
                     originalRecords={filteredOriginal}
                     customRecords={filteredCustom}
                   />
-                  {/* 범례 */}
                   <div className="flex flex-wrap gap-3 justify-center mt-2 text-xs text-gray-400">
                     {filteredOriginal.length > 0 && (
                       <span className="flex items-center gap-1.5">
@@ -473,60 +458,16 @@ export default function CustomMockStats() {
                 </div>
               </div>
 
-              {/* ── 합격 예측 ───────────────────────────────────────────────── */}
-              {prediction && (
-                <div className="rounded-2xl bg-indigo-50 border border-indigo-100 px-4 py-4 flex flex-col gap-3">
-                  <p className="text-xs font-bold text-indigo-600">🔮 합격 예측</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-gray-500">최근 {prediction.count}회 평균</span>
-                      <span className={`text-3xl font-bold ${prediction.avgScore >= 60 ? 'text-green-600' : prediction.avgScore >= 40 ? 'text-amber-500' : 'text-red-500'}`}>
-                        {prediction.avgScore}점
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-xs text-gray-500">예상 합격 확률</span>
-                      <span className={`text-3xl font-bold ${prediction.probability >= 65 ? 'text-green-600' : prediction.probability >= 40 ? 'text-amber-500' : 'text-red-500'}`}>
-                        {prediction.probability}%
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-2 rounded-full transition-all ${prediction.probability >= 65 ? 'bg-green-500' : prediction.probability >= 40 ? 'bg-amber-400' : 'bg-red-400'}`}
-                      style={{ width: `${prediction.probability}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-gray-400">* 과목별 최소 40점 유지 시 기준</p>
-                </div>
-              )}
+              {/* ── 4. WeaknessHeatmap ───────────────────────────────────────── */}
+              <WeaknessHeatmap questionAttempts={syntheticAttempts} />
 
-              {/* ── 약점 수렴 분석 ──────────────────────────────────────────── */}
-              {weaknessList.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs font-bold text-gray-500 px-1">🎯 약점 수렴 분석</p>
-                  <div className="rounded-2xl bg-white border border-gray-200 px-4 py-4 flex flex-col gap-2.5">
-                    <p className="text-[11px] text-gray-400">전체 MCQ 풀이 기준 · 정답률 낮은 세부과목</p>
-                    {weaknessList.map(([sub, stat]) => (
-                      <div key={sub} className="flex items-center gap-3">
-                        <span className="text-xs font-semibold text-gray-600 w-20 shrink-0">{sub}</span>
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-1.5 rounded-full ${stat.accuracy >= 60 ? 'bg-green-400' : stat.accuracy >= 40 ? 'bg-amber-400' : 'bg-red-400'}`}
-                            style={{ width: `${stat.accuracy}%` }}
-                          />
-                        </div>
-                        <span className={`text-xs font-bold tabular-nums w-9 text-right ${stat.accuracy >= 60 ? 'text-green-600' : stat.accuracy >= 40 ? 'text-amber-500' : 'text-red-500'}`}>
-                          {stat.accuracy}%
-                        </span>
-                        <span className="text-xs text-gray-300 tabular-nums">({stat.total})</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* ── 5. DifficultyAnalysis ────────────────────────────────────── */}
+              <DifficultyAnalysis />
 
-              {/* ── 응시 이력 ───────────────────────────────────────────────── */}
+              {/* ── 6. StudyRoadmap ──────────────────────────────────────────── */}
+              <StudyRoadmap questionAttempts={syntheticAttempts} />
+
+              {/* ── 7. 응시 이력 ─────────────────────────────────────────────── */}
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-bold text-gray-500 px-1">응시 이력</p>
                 <div className="flex flex-col gap-2">
