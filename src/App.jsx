@@ -24,6 +24,8 @@ import CustomMockHome from './pages/CustomMockHome'
 import CustomMockQuiz from './pages/CustomMockQuiz'
 import CustomMockResult from './pages/CustomMockResult'
 import CustomMockStats from './pages/CustomMockStats'
+import UnifiedWrongReview from './pages/UnifiedWrongReview'
+import ChallengeMode from './pages/ChallengeMode'
 
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
@@ -57,6 +59,8 @@ export default function App() {
         <Route path="/custom-mock/:sessionId/part2" element={<CustomMockQuiz />} />
         <Route path="/custom-mock/:sessionId/result" element={<CustomMockResult />} />
         <Route path="/custom-mock/stats" element={<CustomMockStats />} />
+        <Route path="/unified-wrong" element={<UnifiedWrongReview />} />
+        <Route path="/unified-wrong/challenge/:minCount" element={<ChallengeMode />} />
       </Routes>
     </BrowserRouter>
   )
