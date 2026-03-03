@@ -86,6 +86,7 @@ export default function WrongReview() {
           .eq('is_correct', false)
 
         if (err) {
+          console.error('[WrongReview] attempts 조회 오류:', err.code, err.message, err.details)
           setError('틀린문제를 불러올 수 없습니다.')
           return
         }
