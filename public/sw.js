@@ -1,26 +1,21 @@
 /**
  * sw.js — GEP Service Worker
- * 전략: Cache-First (캐시 우선, 없으면 네트워크 → 캐시 저장)
- * 오프라인에서도 문제 풀기 가능하도록 exams.json 포함 캐시
+ * 전략: Network-First (네트워크 우선, 실패 시 캐시 폴백)
+ *
+ * GEP_111 긴급 수정:
+ *   - CACHE_NAME gep-v1 → gep-v3 (이전 캐시 강제 삭제)
+ *   - Supabase / OAuth 요청은 캐시 완전 제외 (LockManager/Cache API 충돌 방지)
+ *   - 전략 Cache-First → Network-First (항상 최신 JS 번들 사용)
  */
 
-const CACHE_NAME = 'gep-v1';
-
-// install 시 앱 셸 사전 캐시 (가벼운 것만)
-const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-];
+const CACHE_NAME = 'gep-v3';
 
 // ── install ───────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
   self.skipWaiting();
 });
 
-// ── activate: 이전 버전 캐시 삭제 ─────────────────────
+// ── activate: 이전 버전 캐시 전체 삭제 ────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -32,26 +27,34 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ── fetch: 캐시 우선, 없으면 네트워크 후 캐시 저장 ────
+// ── fetch: Network-First ──────────────────────────────
 self.addEventListener('fetch', (event) => {
-  // GET 요청만 캐시 처리
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
+  const url = event.request.url;
 
-      return fetch(event.request).then((response) => {
+  // Supabase API / OAuth 요청은 캐시 완전 제외 (항상 네트워크)
+  if (
+    url.includes('supabase.co') ||
+    url.includes('supabase.io') ||
+    url.includes('accounts.google.com') ||
+    url.includes('oauth')
+  ) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
         // 유효한 응답만 캐시 저장
         if (response.ok && response.type !== 'opaque') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        // 오프라인 + 캐시 없음: 루트 HTML 반환 (SPA 폴백)
-        return caches.match('/index.html');
-      });
-    })
+      })
+      .catch(() => {
+        // 네트워크 실패 → 캐시 폴백
+        return caches.match(event.request)
+          .then((cached) => cached || caches.match('/index.html'));
+      })
   );
 });
