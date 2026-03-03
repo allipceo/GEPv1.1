@@ -233,11 +233,42 @@ export default function ChallengeMode() {
     setShowFeedback(false)
 
     if (isLast) {
-      // 완료: reclassify fire-and-forget
       setIsReclassing(true)
+
+      // 결과 계산
+      const correctCnt = results.filter(r => r.isCorrect).length
+      const wrongCnt   = results.filter(r => !r.isCorrect).length
+
+      // 과목별 통계 계산 (인라인 — 클로저 안정성 보장)
+      const subjectMap = {}
+      for (const r of results) {
+        const q   = questions.find(q => q.id === r.id)
+        const key = q?.subject ?? q?.source ?? '기타'
+        if (!subjectMap[key]) subjectMap[key] = { subject: key, correct: 0, wrong: 0 }
+        r.isCorrect ? subjectMap[key].correct++ : subjectMap[key].wrong++
+      }
+
+      // localStorage 저장 — ChallengeResult.jsx에서 읽음
+      try {
+        localStorage.setItem('gep:unified_wrong:challenge_result', JSON.stringify({
+          beforeCount:  questions.length,
+          correctCount: correctCnt,
+          wrongCount:   wrongCnt,
+          subjectStats: Object.values(subjectMap),
+          minCount,
+          timestamp:    Date.now(),
+        }))
+
+        // 주간 세션 기록 — ProgressTracker.jsx 주간 차트용
+        const today    = new Date().toISOString().slice(0, 10)
+        const sessRaw  = localStorage.getItem('gep:unified_wrong:weekly_sessions')
+        const sessions = sessRaw ? JSON.parse(sessRaw) : {}
+        sessions[today] = (sessions[today] ?? 0) + 1
+        localStorage.setItem('gep:unified_wrong:weekly_sessions', JSON.stringify(sessions))
+      } catch {}
+
       reclassifyResults(userId, results).catch(() => {})  // fire-and-forget
-      setPhase('done')
-      setIsReclassing(false)
+      navigate('/unified-wrong/result')
       return
     }
     setCurrentIndex(i => i + 1)
@@ -354,34 +385,6 @@ export default function ChallengeMode() {
             hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-md"
         >
           지금 시작하기 →
-        </button>
-      </div>
-    )
-  }
-
-  // ── DONE 화면 ─────────────────────────────────────────────────────────────
-  if (phase === 'done') {
-    return (
-      <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
-
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-gray-900">복습 완료!</h1>
-        </div>
-
-        <ReclassificationAnimation
-          beforeCount    ={questions.length}
-          afterCorrect   ={passCount}
-          afterWrong     ={failCount}
-          subjectSummary ={subjectSummary}
-          isVisible      ={true}
-        />
-
-        <button
-          onClick={() => navigate('/unified-wrong')}
-          className="w-full py-3 rounded-2xl bg-indigo-600 text-white text-sm font-bold
-            hover:bg-indigo-700 transition-colors"
-        >
-          오답 목록으로 돌아가기
         </button>
       </div>
     )
