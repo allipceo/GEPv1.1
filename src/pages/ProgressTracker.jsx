@@ -163,14 +163,15 @@ export default function ProgressTracker() {
       {/* ── 헤더 ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="뒤로가기"
+          onClick={() => navigate('/')}
+          className="text-gray-400 hover:text-gray-700 p-1 -ml-1 flex items-center gap-1"
+          aria-label="홈으로"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
             viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
+          <span className="text-xs font-semibold">홈으로</span>
         </button>
         <h1 className="text-lg font-bold text-gray-900">학습 진행도</h1>
         <span className="ml-auto text-xs text-gray-400 tabular-nums">

@@ -115,10 +115,18 @@ export default function UnifiedWrongReview() {
         </button>
         <h1 className="text-lg font-bold text-gray-900">통합 오답 복습</h1>
         {!isLoading && (
-          <span className="ml-auto text-xs text-gray-400 tabular-nums">
+          <span className="text-xs text-gray-400 tabular-nums">
             총 {questions.length}문제
           </span>
         )}
+        <button
+          onClick={() => navigate('/unified-wrong/progress')}
+          className="ml-auto flex items-center gap-1 text-xs text-indigo-500 font-semibold
+            hover:text-indigo-700 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50"
+          aria-label="학습 진행도 확인"
+        >
+          📊 학습 진행도
+        </button>
       </div>
 
       {/* ── 로딩 ─────────────────────────────────────────────────────────── */}
