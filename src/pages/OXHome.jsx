@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import useOxStore from '../stores/oxStore'
 import { OX_SUBJECTS } from '../config/oxSubjects'
+import { FEATURE_FLAGS } from '../config/featureFlags'
 
 // 과목별 컬러 테마
 const SUBJECT_THEME = {
@@ -47,8 +48,8 @@ export default function OXHome() {
   const oxRoundNo        = useOxStore((s) => s.roundNo)
   const oxTotalCumulative = useOxStore((s) => s.totalCumulative)
 
-  // ── 레벨 3 게이트 ────────────────────────────────────────────────────────────
-  if (serviceLevel < 3) {
+  // ── 레벨 게이트 (featureFlags.OX_MIN_LEVEL 기준) ─────────────────────────────
+  if (serviceLevel < FEATURE_FLAGS.OX_MIN_LEVEL) {
     return (
       <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
         <div className="flex items-center gap-3">
@@ -67,7 +68,7 @@ export default function OXHome() {
         <div className="flex flex-col items-center gap-4 py-12 text-center">
           <span className="text-4xl">🔒</span>
           <p className="text-base font-semibold text-gray-700">레벨 3 전용 서비스입니다</p>
-          <p className="text-sm text-gray-400">OX 진위형 학습은 레벨 3 이상 회원만 이용할 수 있습니다.</p>
+          <p className="text-sm text-gray-400">OX 진위형 학습은 레벨 {FEATURE_FLAGS.OX_MIN_LEVEL} 이상 회원만 이용할 수 있습니다.</p>
           <button
             onClick={() => navigate('/')}
             className="mt-2 px-5 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-200 active:bg-gray-200 transition-colors"
