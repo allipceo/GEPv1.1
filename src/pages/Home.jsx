@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
 import useStatsStore from '../stores/statsStore'
 import Settings, { loadSettings } from '../components/Settings'
@@ -219,6 +219,40 @@ export default function Home() {
             <span className="text-indigo-400 text-sm">›</span>
           </div>
         </button>
+
+        {/* 모의고사 버튼 */}
+        <Link
+          to="/mock"
+          className="block p-4 bg-white rounded-lg border-2 border-indigo-200 hover:border-indigo-400 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📝</span>
+              <div>
+                <div className="font-semibold text-gray-900">모의고사</div>
+                <div className="text-sm text-gray-500">실전 9회 모의고사</div>
+              </div>
+            </div>
+            <span className="text-indigo-600">→</span>
+          </div>
+        </Link>
+
+        {/* 맞춤 모의고사 버튼 */}
+        <Link
+          to="/custom-mock"
+          className="block p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 hover:border-purple-400 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎯</span>
+              <div>
+                <div className="font-semibold text-gray-900">맞춤 모의고사</div>
+                <div className="text-sm text-gray-500">무한 랜덤 조합</div>
+              </div>
+            </div>
+            <span className="text-purple-600">→</span>
+          </div>
+        </Link>
 
         {/* 과목 선택 — 3개 아코디언 (기본 모두 접힘) */}
         <div className="flex flex-col gap-2">
