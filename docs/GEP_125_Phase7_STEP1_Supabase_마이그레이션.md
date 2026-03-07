@@ -4,6 +4,7 @@
 **작성자:** 고팀장 (Claude Code)
 **Phase:** Phase 7 STEP 1
 **지시자:** 노팀장 (개발관리창008)
+**상태:** ✅ 완료 (노팀장 승인)
 
 ---
 
@@ -44,47 +45,68 @@ Phase 7 서비스 인프라 구축에 필요한 Supabase DB 마이그레이션.
 
 ### 신규 테이블 3개
 
-| 테이블 | 컬럼 수 | 주요 기능 |
-|--------|---------|----------|
-| billing_history | 9개 | 결제 이력, RLS |
-| level_change_history | 7개 | 레벨 변경 이력, RLS |
-| exam_types | 5개 | 시험 종류·일정 마스터, 공개 읽기 |
+| 테이블 | 컬럼 수 | RLS | 주요 기능 |
+|--------|---------|-----|----------|
+| billing_history | 9개 | ✅ 본인만 | 결제 이력 원장 |
+| level_change_history | 7개 | ✅ 본인만 | 레벨 변경 이력 |
+| exam_types | 5개 | ✅ 전체 읽기 | 시험 종류·일정 마스터 |
 
-### attempts / ox_attempts 컬럼 추가
+`exam_types` 초기 데이터:
+```json
+{ "id": "insurance_broker", "name": "손해보험중개사", "is_enabled": true,
+  "exam_schedule": [{"year":2026,"date1":"2026-06-14","date2":"2026-09-27"}] }
+```
 
-| 테이블 | 추가 컬럼 | 목적 |
-|--------|----------|------|
-| attempts | service_level_at_attempt INTEGER DEFAULT 1 | 풀이 시점 서비스 레벨 |
-| ox_attempts | service_level_at_attempt INTEGER DEFAULT 1 | 풀이 시점 서비스 레벨 |
+### service_level_at_attempt — 추가 불필요 (자체 수정)
+
+초기 설계에서 `attempts`, `ox_attempts` 테이블에 `service_level_at_attempt` 컬럼 추가를 계획했으나,
+실행 중 다음 사실을 확인하여 해당 섹션을 제거함:
+
+| 항목 | 사실 |
+|------|------|
+| `ox_attempts` 테이블 | Supabase에 존재하지 않음. OX 풀이는 `attempts` 테이블 공용 사용 |
+| `attempts.service_level` | `schema.sql`에 이미 `service_level INTEGER NOT NULL DEFAULT 1` 존재 |
+| 결론 | 기존 `attempts.service_level` 컬럼으로 충분. 별도 ALTER 불필요 |
+
+> **교훈:** CLAUDE.md에 `ox_attempts`가 기재되어 있으나 실제 스키마 및 코드에는 없음.
+> 문서와 실제 DB 구조가 불일치. 향후 CLAUDE.md 수정 필요.
 
 ---
 
 ## 4. 테스트 결과
 
-- 빌드: 해당 없음 (SQL 파일만 생성)
-- Supabase 실행: 노팀장이 대시보드에서 수동 실행 필요
+- 빌드: 해당 없음 (SQL 파일만, JS 코드 무변경)
+- Supabase 실행: ✅ Success (노팀장 대시보드 실행 확인)
 
 ---
 
 ## 5. 배포 결과
 
-- Commit: (아래 참조)
-- Push: ✅ origin/main
-- Vercel: 자동 배포 (SQL 파일은 Vercel 영향 없음)
+| 항목 | 내용 |
+|------|------|
+| Commit (최초) | `5cd99f1` — SQL 파일 신규 생성 |
+| Commit (수정) | `1ddd72d` — ox_attempts 오류 제거 |
+| Push | ✅ origin/main |
+| Vercel | ✅ 자동 배포 (SQL 파일은 프론트 영향 없음) |
 
 ---
 
-## 6. Supabase 실행 방법
+## 6. Supabase 실행 결과 확인 항목
 
-```
-Supabase 대시보드 → SQL Editor
-→ supabase/migrations/phase7_tables.sql 내용 붙여넣기
-→ Run 실행
-→ 테이블별 생성 확인:
-   - billing_history
-   - level_change_history
-   - exam_types (초기 데이터 1행 포함)
-   - users 컬럼 13개 추가 확인
-   - attempts.service_level_at_attempt 컬럼 확인
-   - ox_attempts.service_level_at_attempt 컬럼 확인
-```
+| 항목 | 결과 |
+|------|------|
+| users 컬럼 13개 추가 | ✅ |
+| billing_history 테이블 생성 | ✅ |
+| level_change_history 테이블 생성 | ✅ |
+| exam_types 테이블 생성 + 초기 데이터 1행 | ✅ |
+
+---
+
+## 7. 교훈
+
+| 항목 | 내용 |
+|------|------|
+| 오류 패턴 | 문서(CLAUDE.md)에 기재된 테이블명이 실제 Supabase 스키마와 불일치 |
+| 발견 방법 | Supabase 실행 오류 → 서비스 코드 grep으로 실제 테이블명 확인 |
+| 예방책 | 신규 ALTER 전 서비스 코드의 `.from('테이블명')` 확인 필수 |
+| CLAUDE.md | `ox_attempts` 항목 삭제 필요 (Phase 7 완료 후 일괄 수정) |
