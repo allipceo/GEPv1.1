@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { FEATURE_FLAGS } from '../config/featureFlags'
 import { mockExamConfig } from '../config/mockExamConfig'
 import {
   mockExamSupabase,
@@ -152,9 +153,10 @@ function RoundCard({ round, session, navigate }) {
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
 export default function MockExamHome() {
   const navigate    = useNavigate()
-  const canMockExam = useAuthStore((s) => s.userFeatures.canMockExam)
-  const userId      = useAuthStore((s) => s.userId)
-  const authStatus  = useAuthStore((s) => s.authStatus)
+  const serviceLevel = useAuthStore((s) => s.serviceLevel)
+  const userId       = useAuthStore((s) => s.userId)
+  const authStatus   = useAuthStore((s) => s.authStatus)
+  const canMockExam  = serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL  // persist 캐시 대신 직접 계산
 
   const [sessions,   setSessions]   = useState({})
   const [isLoading,  setIsLoading]  = useState(true)
