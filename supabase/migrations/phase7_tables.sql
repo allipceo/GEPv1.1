@@ -120,12 +120,8 @@ CREATE OR REPLACE TRIGGER trg_exam_types_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_exam_types_updated_at();
 
 -- ──────────────────────────────────────────────────────────────────────────────
--- 5. attempts / ox_attempts — service_level_at_attempt 컬럼 추가
---    풀이 시점의 서비스 레벨 기록 (게스트=1, 유료회원=2~5)
---    기존 레코드는 DEFAULT 1 적용
+-- 5. service_level_at_attempt — 추가 불필요 (기존 컬럼으로 충분)
+--    attempts 테이블: 이미 service_level INTEGER NOT NULL DEFAULT 1 존재
+--    ox_attempts 테이블: 존재하지 않음 (OX 풀이는 attempts 테이블 공용)
+--    → 별도 ALTER 없이 기존 attempts.service_level 컬럼 활용
 -- ──────────────────────────────────────────────────────────────────────────────
-ALTER TABLE attempts
-  ADD COLUMN IF NOT EXISTS service_level_at_attempt INTEGER DEFAULT 1;
-
-ALTER TABLE ox_attempts
-  ADD COLUMN IF NOT EXISTS service_level_at_attempt INTEGER DEFAULT 1;
