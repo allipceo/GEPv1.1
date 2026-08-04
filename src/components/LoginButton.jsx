@@ -1,7 +1,12 @@
-import { supabase } from '../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 export default function LoginButton({ label = 'Google로 시작하기' }) {
   const handleLogin = async () => {
+    if (!isSupabaseConfigured) {
+      window.alert('로컬 실행 환경에 Supabase 설정이 없습니다. .env.local에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해 주세요.')
+      return
+    }
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
