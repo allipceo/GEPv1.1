@@ -29,6 +29,14 @@ CREATE TABLE IF NOT EXISTS gep_admin_emails (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- GEP V3.0 phase-1 pilot fixed operator.
+-- Operator: 조은상 / choeunsang@gmail.com / 010-2067-6442
+-- This fixed seed is for the phase-1 pilot only and should be replaced
+-- by editable operator management before commercial launch.
+INSERT INTO gep_admin_emails (email)
+VALUES ('choeunsang@gmail.com')
+ON CONFLICT (email) DO NOTHING;
+
 CREATE OR REPLACE FUNCTION gep_is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -105,6 +113,6 @@ BEGIN
   END IF;
 END $$;
 
--- Seed the owner account manually after creating this table:
--- INSERT INTO gep_admin_emails (email) VALUES ('owner@example.com')
+-- Additional operator accounts can be added manually if needed:
+-- INSERT INTO gep_admin_emails (email) VALUES ('operator@example.com')
 -- ON CONFLICT (email) DO NOTHING;
