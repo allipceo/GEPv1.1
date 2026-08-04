@@ -16,6 +16,7 @@
  */
 
 import { supabase } from '../lib/supabase'
+import { canCountAttempts } from './countingEligibility'
 
 export const oxService = {
   /**
@@ -24,11 +25,12 @@ export const oxService = {
    * @param {boolean}     isCorrect
    * @param {{ answer: 'O'|'X', round: number, subject: string, subSubject: string }} ctx
    */
-  recordAttempt: async (userId, oxId, isCorrect, ctx = {}) => {
-    if (!userId) return
+  recordAttempt: async (authState, oxId, isCorrect, ctx = {}) => {
+    if (!canCountAttempts(authState)) return
 
     const { answer, round, subject, subSubject } = ctx
     const selectedAnswer = answer === 'O' ? 1 : 2
+    const userId = authState.userId
 
     const [attemptRes, rpcRes] = await Promise.all([
       supabase.from('attempts').insert({
@@ -41,7 +43,7 @@ export const oxService = {
         selected_answer: selectedAnswer,
         is_correct:      isCorrect,
         exam_version:    '1.0',
-        service_level:   3,
+        service_level:   authState.serviceLevel ?? 1,
       }),
       supabase.rpc('upsert_question_stat', {
         p_question_id: oxId,
@@ -63,8 +65,9 @@ export const oxService = {
    * @param {string}      subSubject
    * @param {{ roundNo: number, totalCumulative: number, wrongCount: number }} data
    */
-  saveProgress: async (userId, subject, subSubject, data) => {
-    if (!userId) return
+  saveProgress: async (authState, subject, subSubject, data) => {
+    if (!canCountAttempts(authState)) return
+    const userId = authState.userId
 
     const { error } = await supabase
       .from('progress')
@@ -89,8 +92,9 @@ export const oxService = {
    * @param {string}      subSubject
    * @returns {Promise<{ roundNo: number }|null>}
    */
-  loadProgress: async (userId, subject, subSubject) => {
-    if (!userId) return null
+  loadProgress: async (authState, subject, subSubject) => {
+    if (!canCountAttempts(authState)) return null
+    const userId = authState.userId
 
     const { data, error } = await supabase
       .from('progress')

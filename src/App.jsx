@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import useExamStore from './stores/examStore'
 import { useAuthStore } from './stores/authStore'
+import useStatsStore from './stores/statsStore'
 import Home from './pages/Home'
 import Question from './pages/Question'
 import Result from './pages/Result'
@@ -38,12 +39,17 @@ function protectedPage(element, options = {}) {
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
   const initAuthListener = useAuthStore((s) => s.initAuthListener)
+  const userId           = useAuthStore((s) => s.userId)
 
   useEffect(() => {
     loadQuestions()
     const subscription = initAuthListener()
     return () => subscription?.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    useStatsStore.getState().bindUser(userId ?? null)
+  }, [userId])
 
   return (
     <BrowserRouter>

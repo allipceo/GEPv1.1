@@ -15,6 +15,16 @@ import { loadStats, saveStats, clearStats, todayKey } from '../utils/statsStorag
 const useStatsStore = create((set, get) => ({
   // 상태: statsStorage 스키마와 동일 구조 (앱 시작 시 localStorage 복원)
   stats: loadStats(),
+  statsUserId: null,
+
+  bindUser: (userId = null) => {
+    const nextUserId = userId ?? null
+    if (get().statsUserId === nextUserId) return
+    set({
+      statsUserId: nextUserId,
+      stats: loadStats(nextUserId),
+    })
+  },
 
   /**
    * 문제 풀이 결과 반영 — total / daily / bySubject / byRound 모두 누적
@@ -25,7 +35,8 @@ const useStatsStore = create((set, get) => ({
    *   correct : 이번 세션 정답 수
    */
   updateStats: ({ subject, round, solved, correct }) => {
-    const prev    = get().stats
+    const state   = get()
+    const prev    = state.stats
     const today   = todayKey()
 
     const prevDay   = prev.daily[today]        ?? { solved: 0, correct: 0 }
@@ -62,13 +73,14 @@ const useStatsStore = create((set, get) => ({
     }
 
     set({ stats: newStats })
-    saveStats(newStats)
+    saveStats(newStats, state.statsUserId)
   },
 
   /** 통계 초기화 — localStorage 삭제 후 기본값으로 복원 */
   resetStats: () => {
-    clearStats()
-    set({ stats: loadStats() })
+    const userId = get().statsUserId
+    clearStats(userId)
+    set({ stats: loadStats(userId) })
   },
 
   /** 오늘 날짜 통계 반환 (미존재 시 { solved: 0, correct: 0 }) */

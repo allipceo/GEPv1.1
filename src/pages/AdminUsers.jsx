@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
+import { resetCountingBaseline } from '../services/countingResetService'
 
 const STATUS_LABEL = {
   pending: '승인 대기',
@@ -29,7 +30,7 @@ export default function AdminUsers() {
 
     const { data, error: loadError } = await supabase
       .from('users')
-      .select('user_id,real_name,phone_number,approval_status,approval_requested_at,approved_at,approval_memo,status,is_paused,created_at')
+      .select('user_id,real_name,phone_number,approval_status,approval_requested_at,approved_at,approval_memo,status,is_paused,reset_baseline_at,created_at')
       .order('approval_requested_at', { ascending: false, nullsFirst: false })
       .limit(100)
 
@@ -62,6 +63,25 @@ export default function AdminUsers() {
 
     if (updateError) {
       setError(updateError.message)
+      return
+    }
+
+    await loadUsers()
+  }
+
+  const resetUserCounting = async (targetUser) => {
+    const confirmed = window.confirm('이 사용자의 카운팅 기준선을 초기화하시겠습니까? 기존 원장은 보존됩니다.')
+    if (!confirmed) return
+
+    const authState = useAuthStore.getState()
+    const result = await resetCountingBaseline(authState, {
+      targetUserId: targetUser.user_id,
+      previousBaselineAt: targetUser.reset_baseline_at,
+      reason: 'operator_reset',
+    })
+
+    if (!result.success) {
+      setError(result.error)
       return
     }
 
@@ -127,7 +147,7 @@ export default function AdminUsers() {
                 placeholder="승인 또는 거절 메모"
               />
 
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-4 gap-2">
                 <button
                   type="button"
                   onClick={() => updateApproval(user.user_id, 'approved')}
@@ -148,6 +168,13 @@ export default function AdminUsers() {
                   className="min-h-[40px] rounded-lg bg-gray-100 px-3 text-sm font-semibold text-gray-700"
                 >
                   중지
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resetUserCounting(user)}
+                  className="min-h-[40px] rounded-lg border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
+                >
+                  초기화
                 </button>
               </div>
             </div>

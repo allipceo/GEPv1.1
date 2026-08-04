@@ -26,6 +26,7 @@ function createDisabledQuery() {
   const query = {
     select: () => query,
     eq: () => query,
+    gte: () => query,
     in: () => query,
     order: () => query,
     limit: () => query,

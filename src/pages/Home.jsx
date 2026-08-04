@@ -12,6 +12,8 @@ import StatsPanel from '../components/StatsPanel'
 import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
+import { canCountAttempts } from '../services/countingEligibility'
+import { resetCountingBaseline } from '../services/countingResetService'
 
 // 3과목 → 세부과목 구성
 const STUDY_SECTIONS = [
@@ -65,14 +67,29 @@ export default function Home() {
   const dday = calcDday(settings.examDate)
 
   const stats        = useStatsStore((s) => s.stats)
+  const resetStats   = useStatsStore((s) => s.resetStats)
   const authStatus   = useAuthStore((s) => s.authStatus)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const email        = useAuthStore((s) => s.email)
+  const userId       = useAuthStore((s) => s.userId)
+  const approvalStatus = useAuthStore((s) => s.approvalStatus)
+  const status       = useAuthStore((s) => s.status)
+  const isPaused     = useAuthStore((s) => s.isPaused)
   const isAdmin      = useAuthStore((s) => s.isAdmin)
+  const refreshProfile = useAuthStore((s) => s.refreshProfile)
   const isGuest      = authStatus === 'guest' && serviceLevel < 2
+  const canUseCounting = canCountAttempts({
+    authStatus,
+    serviceLevel,
+    userId,
+    approvalStatus,
+    status,
+    isPaused,
+    isAdmin,
+  })
 
   // 레벨2+ 오답 횟수 (로컬 statsStore 기준)
-  const wrongCount = (authStatus === 'authenticated' && serviceLevel >= 2)
+  const wrongCount = canUseCounting
     ? Math.max(0, stats.total.solved - stats.total.correct)
     : null
 
@@ -110,6 +127,27 @@ export default function Home() {
     setRound('전체')
     setSubSubject(sub)
     navigate('/question')
+  }
+
+  const handleResetStats = async () => {
+    if (!canUseCounting) return
+    const confirmed = window.confirm('지금까지의 카운팅을 초기화하시겠습니까? 기존 기록은 보존되고 오늘부터 새 기준으로 집계됩니다.')
+    if (!confirmed) return
+
+    const authState = useAuthStore.getState()
+    const result = await resetCountingBaseline(authState, {
+      previousBaselineAt: authState.resetBaselineAt,
+      reason: 'user_request',
+    })
+
+    if (!result.success) {
+      window.alert(`초기화에 실패했습니다: ${result.error}`)
+      return
+    }
+
+    resetStats()
+    await refreshProfile()
+    window.alert('카운팅이 초기화되었습니다.')
   }
 
   return (
@@ -182,7 +220,7 @@ export default function Home() {
         )}
 
         {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
-        {authStatus === 'authenticated' && serviceLevel >= 2 && (
+        {canUseCounting && (
           <button
             onClick={() => navigate('/wrong-review')}
             className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-100 transition-colors"
@@ -342,6 +380,7 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         onSave={(s) => setSettings(s)}
+        onResetStats={canUseCounting ? handleResetStats : null}
       />
     </>
   )

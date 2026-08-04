@@ -27,9 +27,13 @@ const DEFAULT_STATS = {
 }
 
 /** localStorage → 스키마 객체 반환. 없거나 버전 불일치 시 기본값 반환 */
-export function loadStats() {
+export function getStatsKey(userId = null) {
+  return userId ? `${STATS_KEY}:${userId}` : STATS_KEY
+}
+
+export function loadStats(userId = null) {
   try {
-    const raw = localStorage.getItem(STATS_KEY)
+    const raw = localStorage.getItem(getStatsKey(userId))
     if (!raw) return _clone(DEFAULT_STATS)
     const parsed = JSON.parse(raw)
     if (parsed.version !== STATS_VERSION) return _clone(DEFAULT_STATS)
@@ -40,16 +44,16 @@ export function loadStats() {
 }
 
 /** 스키마 객체 → localStorage 저장 */
-export function saveStats(stats) {
+export function saveStats(stats, userId = null) {
   try {
-    localStorage.setItem(STATS_KEY, JSON.stringify(stats))
+    localStorage.setItem(getStatsKey(userId), JSON.stringify(stats))
   } catch {}
 }
 
 /** localStorage에서 통계 키 삭제 */
-export function clearStats() {
+export function clearStats(userId = null) {
   try {
-    localStorage.removeItem(STATS_KEY)
+    localStorage.removeItem(getStatsKey(userId))
   } catch {}
 }
 
