@@ -15,6 +15,7 @@ import { create } from 'zustand';
 import { loadExams } from '../utils/loadExams';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
+import { canCountAttempts } from '../services/countingEligibility';
 
 const STORAGE_KEY = 'gep:v1:examStore';
 
@@ -24,13 +25,29 @@ function makeProgressKey(round, subject, subSubject = null) {
   return subSubject ? `${round}_${subject}_${subSubject}` : `${round}_${subject}`;
 }
 
+function makeModeProgressKey(state) {
+  if (state.studyMode === 'service_a_sequence') {
+    return `service_a_${state.selectedRound}`;
+  }
+  return makeProgressKey(state.selectedRound, state.selectedSubject, state.selectedSubSubject);
+}
+
 // ── Selector (파생값, 상태 아님) ──────────────────────
 export const selectFilteredQuestions = (state) =>
   state.questions.filter((q) => {
+    if (state.studyMode === 'service_a_sequence') {
+      return q.round === state.selectedRound;
+    }
     if (q.subject !== state.selectedSubject) return false;
     if (state.selectedRound !== '전체' && q.round !== state.selectedRound) return false;
     if (state.selectedSubSubject && q.subSubject !== state.selectedSubSubject) return false;
     return true;
+  }).sort((a, b) => {
+    if (state.studyMode !== 'service_a_sequence') return 0;
+    const partA = Number(a.partNumber ?? a.roundNumber ?? 0);
+    const partB = Number(b.partNumber ?? b.roundNumber ?? 0);
+    if (partA !== partB) return partA - partB;
+    return String(a.id).localeCompare(String(b.id));
   });
 
 // ── localStorage 헬퍼 ─────────────────────────────────
@@ -46,6 +63,7 @@ function saveToStorage(state) {
       selectedSubject:    state.selectedSubject,
       selectedRound:      state.selectedRound,
       selectedSubSubject: state.selectedSubSubject,
+      studyMode:          state.studyMode,
       progressMap:        state.progressMap,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -64,6 +82,7 @@ const useExamStore = create((set, get) => ({
   selectedSubject:    '법령',
   selectedRound:      23,
   selectedSubSubject: null,
+  studyMode:          'service_b_subject_random',
   answers:            {},
   progressMap:        {}, // { "23_법령": 10, "26_손보1부": 5 }
   isLoading:          false,
@@ -87,6 +106,7 @@ const useExamStore = create((set, get) => ({
         selectedSubject:    '법령',
         selectedRound:      23,
         selectedSubSubject: null,
+        studyMode:          'service_b_subject_random',
         progressMap:        {},
       };
       try {
@@ -103,6 +123,7 @@ const useExamStore = create((set, get) => ({
               selectedSubject:    saved.selectedSubject    ?? '법령',
               selectedRound:      saved.selectedRound      ?? 23,
               selectedSubSubject: saved.selectedSubSubject ?? null,
+              studyMode:          saved.studyMode          ?? 'service_b_subject_random',
               progressMap:        saved.progressMap        ?? {},
             };
           } else {
@@ -135,11 +156,44 @@ const useExamStore = create((set, get) => ({
   },
 
   /** 과목 변경 → progressMap에서 해당 키 인덱스 로드 */
+  setStudyMode: (studyMode) => {
+    set({ studyMode });
+    saveToStorage(get());
+  },
+
+  startServiceA: (round) => {
+    const state = get();
+    const key = `service_a_${round}`;
+    const savedIndex = state.progressMap[key] ?? 0;
+    set({
+      studyMode: 'service_a_sequence',
+      selectedRound: round,
+      selectedSubject: null,
+      selectedSubSubject: null,
+      currentIndex: savedIndex,
+    });
+    saveToStorage(get());
+  },
+
+  startServiceB: (subject, subSubject = null) => {
+    const state = get();
+    const key = makeProgressKey('전체', subject, subSubject);
+    const savedIndex = state.progressMap[key] ?? 0;
+    set({
+      studyMode: 'service_b_subject_random',
+      selectedRound: '전체',
+      selectedSubject: subject,
+      selectedSubSubject: subSubject,
+      currentIndex: savedIndex,
+    });
+    saveToStorage(get());
+  },
+
   setSubject: (subject) => {
     const state = get();
     const key = makeProgressKey(state.selectedRound, subject);
     const savedIndex = state.progressMap[key] ?? 0;
-    set({ selectedSubject: subject, currentIndex: savedIndex });
+    set({ studyMode: 'service_b_subject_random', selectedSubject: subject, currentIndex: savedIndex });
     saveToStorage(get());
   },
 
@@ -166,14 +220,14 @@ const useExamStore = create((set, get) => ({
     const state   = get();
     const filtered = selectFilteredQuestions(state);
     const clamped  = Math.max(0, Math.min(n, filtered.length - 1));
-    const key      = makeProgressKey(state.selectedRound, state.selectedSubject, state.selectedSubSubject);
+    const key      = makeModeProgressKey(state);
     const newProgressMap = { ...state.progressMap, [key]: clamped };
     set({ currentIndex: clamped, progressMap: newProgressMap });
     saveToStorage(get());
 
     // 레벨2+ — Supabase progress 테이블 동기화 (fire-and-forget)
     const auth = useAuthStore.getState();
-    if (auth.authStatus === 'authenticated' && auth.serviceLevel >= 2 && auth.userId) {
+    if (canCountAttempts(auth)) {
       supabase.from('progress').upsert(
         { user_id: auth.userId, filter_key: key, current_index: clamped, last_updated: new Date().toISOString() },
         { onConflict: 'user_id,filter_key' }

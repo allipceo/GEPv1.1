@@ -240,6 +240,20 @@ export default function Home() {
           </button>
         )}
 
+        <button
+          onClick={() => navigate('/service-a')}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 active:bg-blue-100 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">📝</span>
+            <span className="text-sm font-semibold text-blue-700">기출 회차 순서풀이</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-blue-400 font-normal">23~31회</span>
+            <span className="text-blue-400 text-sm">›</span>
+          </div>
+        </button>
+
         {/* OX 진위형 버튼 */}
         <button
           onClick={() => navigate('/ox')}
