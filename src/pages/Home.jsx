@@ -68,6 +68,7 @@ export default function Home() {
   const authStatus   = useAuthStore((s) => s.authStatus)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const email        = useAuthStore((s) => s.email)
+  const isAdmin      = useAuthStore((s) => s.isAdmin)
   const isGuest      = authStatus === 'guest' && serviceLevel < 2
 
   // 레벨2+ 오답 횟수 (로컬 statsStore 기준)
@@ -168,6 +169,17 @@ export default function Home() {
 
         {/* 학습 현황 대시보드 */}
         <StatsPanel homeMode allStats={stats} isGuest={isGuest} wrongCount={wrongCount} />
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => navigate('/admin/users')}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-gray-900 text-white hover:bg-gray-800 active:bg-gray-800 transition-colors"
+          >
+            <span className="text-sm font-semibold">사용자 승인 관리</span>
+            <span className="text-sm text-white/70">관리자</span>
+          </button>
+        )}
 
         {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
         {authStatus === 'authenticated' && serviceLevel >= 2 && (

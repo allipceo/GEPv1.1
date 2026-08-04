@@ -1,70 +1,127 @@
-/**
- * src/stores/authStore.js
- * 인증 상태 전역 스토어
- *
- * localStorage 키: 'gep_auth_v1'
- * authStatus: 'guest' | 'authenticated'
- * serviceLevel: 1~5 (1=기본, 2+=Supabase 통계, 3+=오답노트, 5+=모의고사)
- *
- * GEP_039: initAuthListener 추가
- *   - SIGNED_IN → users 테이블 조회/INSERT → setAuth
- *   - SIGNED_OUT → clearAuth
- */
-
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase } from '../lib/supabase'
 import { FEATURE_FLAGS } from '../config/featureFlags'
 
+const ADMIN_EMAILS = (import.meta.env.VITE_GEP_ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean)
+
+function buildFeatures(serviceLevel) {
+  return {
+    canStats: serviceLevel >= FEATURE_FLAGS.STATS_MIN_LEVEL,
+    canWrongNote: serviceLevel >= FEATURE_FLAGS.WRONGNOTE_MIN_LEVEL,
+    canMockExam: serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL,
+  }
+}
+
+const defaultProfile = {
+  approvalStatus: 'guest',
+  realName: null,
+  phoneNumber: null,
+  resetBaselineAt: null,
+  status: 'active',
+  isPaused: false,
+  approvalMemo: null,
+  isAdmin: false,
+}
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
-      authStatus:   'guest',   // 'guest' | 'authenticated'
-      serviceLevel: 1,         // 1~5
-      email:        null,      // 로그인 사용자 이메일
-      userId:       null,      // auth.uid() — Supabase INSERT용
-      userFeatures: {
-        canStats:    false,
-        canWrongNote: false,
-        canMockExam: false,
-      },
+      authStatus: 'guest',
+      serviceLevel: 1,
+      email: null,
+      userId: null,
+      userFeatures: buildFeatures(1),
+      ...defaultProfile,
 
-      // 로그인 시 호출 (email, userId 파라미터 추가)
-      setAuth: (serviceLevel, userFeatures, email = null, userId = null) => set({
+      setAuth: (serviceLevel, userFeatures, email = null, userId = null, profile = {}) => set({
         authStatus: 'authenticated',
         serviceLevel,
         userFeatures,
         email,
         userId,
+        ...defaultProfile,
+        ...profile,
       }),
 
-      // 로그아웃 시 호출
       clearAuth: () => set({
-        authStatus:   'guest',
+        authStatus: 'guest',
         serviceLevel: 1,
-        email:        null,
-        userId:       null,
-        userFeatures: {
-          canStats:    false,
-          canWrongNote: false,
-          canMockExam: false,
-        },
+        email: null,
+        userId: null,
+        userFeatures: buildFeatures(1),
+        ...defaultProfile,
       }),
 
-      /**
-       * Google OAuth 콜백 후 인증 상태 동기화
-       * App.jsx useEffect에서 1회 호출 — subscription 반환 (cleanup용)
-       *
-       * SIGNED_IN:
-       *   1. users 테이블에서 service_level 조회
-       *   2. 없으면 user_id=auth.uid()로 INSERT (service_level=1)
-       *   3. setAuth 호출
-       * SIGNED_OUT: clearAuth 호출
-       */
+      refreshProfile: async () => {
+        const { userId, email } = get()
+        if (!userId) return null
+
+        const { data, error } = await supabase
+          .from('users')
+          .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at')
+          .eq('user_id', userId)
+          .single()
+
+        if (error) {
+          console.warn('[GEP] users profile refresh failed:', error.message)
+          return null
+        }
+
+        const serviceLevel = data?.service_level ?? 1
+        const profile = {
+          approvalStatus: data?.approval_status ?? 'pending',
+          realName: data?.real_name ?? null,
+          phoneNumber: data?.phone_number ?? null,
+          resetBaselineAt: data?.reset_baseline_at ?? null,
+          status: data?.status ?? 'active',
+          isPaused: data?.is_paused ?? false,
+          approvalMemo: data?.approval_memo ?? null,
+          isAdmin: ADMIN_EMAILS.includes((email ?? '').toLowerCase()),
+        }
+
+        get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, userId, profile)
+        return profile
+      },
+
+      submitApprovalRequest: async ({ realName, phoneNumber, memo = '' }) => {
+        const { userId } = get()
+        if (!userId) return { success: false, error: '로그인이 필요합니다.' }
+
+        const normalizedPhone = phoneNumber.replace(/[^\d+]/g, '')
+        const payload = {
+          real_name: realName.trim(),
+          phone_number: normalizedPhone,
+          approval_status: 'pending',
+          approval_requested_at: new Date().toISOString(),
+          approval_memo: memo.trim() || null,
+          status: 'active',
+        }
+
+        const { error } = await supabase
+          .from('users')
+          .update(payload)
+          .eq('user_id', userId)
+
+        if (error) return { success: false, error: error.message }
+
+        set({
+          approvalStatus: 'pending',
+          realName: payload.real_name,
+          phoneNumber: payload.phone_number,
+          approvalMemo: payload.approval_memo,
+          status: 'active',
+        })
+
+        return { success: true }
+      },
+
       initAuthListener: () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            // SIGNED_IN / INITIAL_SESSION / TOKEN_REFRESHED — 세션 있으면 인증 처리
             const isAuthEvent =
               event === 'SIGNED_IN' ||
               event === 'INITIAL_SESSION' ||
@@ -72,40 +129,55 @@ export const useAuthStore = create(
 
             if (isAuthEvent && session?.user) {
               const user = session.user
+              const email = user.email ?? null
 
-              // users 테이블에서 service_level 조회
               const { data, error } = await supabase
                 .from('users')
-                .select('service_level')
+                .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at')
                 .eq('user_id', user.id)
                 .single()
 
+              let profileData = data
               let serviceLevel = 1
 
               if (error || !data) {
-                // 신규 유저 — INSERT
                 const { error: insertErr } = await supabase
                   .from('users')
-                  .insert({ user_id: user.id, service_level: 1 })
+                  .insert({
+                    user_id: user.id,
+                    service_level: 1,
+                    status: 'active',
+                    approval_status: 'pending',
+                    approval_requested_at: new Date().toISOString(),
+                  })
 
                 if (insertErr) {
-                  console.warn('[GEP] users INSERT 실패:', insertErr.message)
+                  console.warn('[GEP] users insert failed:', insertErr.message)
                 }
-                serviceLevel = 1
+
+                profileData = {
+                  service_level: 1,
+                  status: 'active',
+                  approval_status: 'pending',
+                  is_paused: false,
+                }
               } else {
                 serviceLevel = data.service_level ?? 1
               }
 
-              const features = {
-                canStats:     serviceLevel >= FEATURE_FLAGS.STATS_MIN_LEVEL,
-                canWrongNote: serviceLevel >= FEATURE_FLAGS.WRONGNOTE_MIN_LEVEL,
-                canMockExam:  serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL,
+              const profile = {
+                approvalStatus: profileData?.approval_status ?? 'pending',
+                realName: profileData?.real_name ?? null,
+                phoneNumber: profileData?.phone_number ?? null,
+                resetBaselineAt: profileData?.reset_baseline_at ?? null,
+                status: profileData?.status ?? 'active',
+                isPaused: profileData?.is_paused ?? false,
+                approvalMemo: profileData?.approval_memo ?? null,
+                isAdmin: ADMIN_EMAILS.includes((email ?? '').toLowerCase()),
               }
 
-              get().setAuth(serviceLevel, features, user.email, user.id)
-
+              get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, user.id, profile)
             } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-              // 세션 없는 INITIAL_SESSION = 로그인 안 된 상태 → 초기화
               get().clearAuth()
             }
           }

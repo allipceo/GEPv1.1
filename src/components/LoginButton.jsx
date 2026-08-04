@@ -1,13 +1,6 @@
-/**
- * LoginButton.jsx — Google OAuth 로그인 버튼
- *
- * 클릭 시 supabase.auth.signInWithOAuth({ provider: 'google' })
- * 인증 완료 후 window.location.origin으로 리다이렉트
- * 모바일 기준 375px, 터치 영역 44px 이상
- */
 import { supabase } from '../lib/supabase'
 
-export default function LoginButton() {
+export default function LoginButton({ label = 'Google로 시작하기' }) {
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -19,12 +12,12 @@ export default function LoginButton() {
 
   return (
     <button
+      type="button"
       onClick={handleLogin}
       className="flex items-center gap-2 px-3 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors"
       style={{ minHeight: '44px' }}
     >
-      {/* Google G 로고 */}
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path
           d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
           fill="#4285F4"
@@ -42,7 +35,7 @@ export default function LoginButton() {
           fill="#EA4335"
         />
       </svg>
-      Google로 시작하기
+      {label}
     </button>
   )
 }
