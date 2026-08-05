@@ -10,6 +10,7 @@ import { useAuthStore } from './stores/authStore'
 import useStatsStore from './stores/statsStore'
 import Home from './pages/Home'
 import ServiceAHome from './pages/ServiceAHome'
+import ServiceBHome from './pages/ServiceBHome'
 import Question from './pages/Question'
 import Result from './pages/Result'
 import WrongReview from './pages/WrongReview'
@@ -57,6 +58,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/service-a" element={protectedPage(<ServiceAHome />)} />
+        <Route path="/service-b" element={protectedPage(<ServiceBHome />)} />
         <Route path="/admin/users" element={protectedPage(<AdminUsers />, { requireApproval: false })} />
         <Route path="/question" element={protectedPage(<Question />)} />
         <Route path="/result" element={protectedPage(<Result />)} />

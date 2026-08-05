@@ -54,6 +54,7 @@ export default function Home() {
   const setSubject    = useExamStore((s) => s.setSubject)
   const setRound      = useExamStore((s) => s.setRound)
   const setSubSubject = useExamStore((s) => s.setSubSubject)
+  const startServiceB = useExamStore((s) => s.startServiceB)
   const questions     = useExamStore((s) => s.questions)
 
   const [settings, setSettings]         = useState({ name: '', examDate: '' })
@@ -126,6 +127,11 @@ export default function Home() {
     setSubject(mainSubject)
     setRound('전체')
     setSubSubject(sub)
+    navigate('/question')
+  }
+
+  const handleServiceBStudy = (mainSubject, sub) => {
+    startServiceB(mainSubject, sub)
     navigate('/question')
   }
 
@@ -256,6 +262,20 @@ export default function Home() {
 
         {/* OX 진위형 버튼 */}
         <button
+          onClick={() => navigate('/service-b')}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 active:bg-indigo-100 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">📚</span>
+            <span className="text-sm font-semibold text-indigo-700">과목별 랜덤풀이</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-indigo-400 font-normal">서비스 B</span>
+            <span className="text-indigo-400 text-sm">›</span>
+          </div>
+        </button>
+
+        <button
           onClick={() => navigate('/ox')}
           className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 active:bg-blue-100 transition-colors"
         >
@@ -362,7 +382,7 @@ export default function Home() {
                         <button
                           key={sub}
                           className={`flex items-center gap-3 w-full text-left px-4 py-3 bg-white hover:bg-gray-50 active:bg-gray-50 transition-colors ${idx > 0 ? 'border-t border-gray-100' : ''}`}
-                          onClick={() => handleSubjectStudy(section.mainSubject, sub)}
+                          onClick={() => handleServiceBStudy(section.mainSubject, sub)}
                         >
                           <span className="flex-1 text-sm text-gray-700">{sub}</span>
                           {isGuest ? (
