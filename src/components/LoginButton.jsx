@@ -1,7 +1,15 @@
+import { useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
-export default function LoginButton({ label = 'Google로 시작하기' }) {
-  const handleLogin = async () => {
+const EMPLOYEE_EMAIL_DOMAIN = '@gep.local'
+
+export default function LoginButton() {
+  const [employeeId, setEmployeeId] = useState('')
+  const [password, setPassword] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
       window.alert('로컬 실행 환경에 Supabase 설정이 없습니다. .env.local에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해 주세요.')
       return
@@ -15,32 +23,83 @@ export default function LoginButton({ label = 'Google로 시작하기' }) {
     })
   }
 
+  const handleLogin = async (event) => {
+    event.preventDefault()
+    setErrorMsg('')
+
+    const normalizedId = employeeId.trim()
+    if (!/^\d{6,}$/.test(normalizedId)) {
+      setErrorMsg('사번은 숫자 6자리 이상이어야 합니다.')
+      return
+    }
+
+    if (password.length < 8) {
+      setErrorMsg('비밀번호는 8자리 이상이어야 합니다.')
+      return
+    }
+
+    if (!isSupabaseConfigured) {
+      window.alert('로컬 실행 환경에 Supabase 설정이 없습니다. .env.local에 VITE_SUPABASE_URL과 VITE_SUPABASE_ANON_KEY를 설정해 주세요.')
+      return
+    }
+
+    setIsSubmitting(true)
+    const { error } = await supabase.auth.signInWithPassword({
+      email: `${normalizedId}${EMPLOYEE_EMAIL_DOMAIN}`,
+      password,
+    })
+    setIsSubmitting(false)
+
+    if (error) {
+      setErrorMsg('사번 또는 비밀번호가 올바르지 않습니다.')
+    }
+  }
+
   return (
-    <button
-      type="button"
-      onClick={handleLogin}
-      className="flex items-center gap-2 px-3 rounded-lg bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-      style={{ minHeight: '44px' }}
-    >
-      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path
-          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-          fill="#4285F4"
-        />
-        <path
-          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-          fill="#34A853"
-        />
-        <path
-          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-          fill="#FBBC05"
-        />
-        <path
-          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-          fill="#EA4335"
-        />
-      </svg>
-      {label}
-    </button>
+    <div className="w-full max-w-xs">
+      <form onSubmit={handleLogin} className="flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+          사번
+          <input
+            value={employeeId}
+            onChange={(event) => setEmployeeId(event.target.value)}
+            className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+            placeholder="예: 202504012"
+            inputMode="numeric"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+          비밀번호
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+            placeholder="••••••••"
+          />
+        </label>
+        {errorMsg && <p className="text-sm font-semibold text-red-600">{errorMsg}</p>}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="min-h-[44px] rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {isSubmitting ? '로그인 중...' : '로그인'}
+        </button>
+      </form>
+
+      <p className="mt-3 text-center text-xs text-gray-400">
+        문의: 관리자에게 연락하세요
+      </p>
+
+      <button
+        type="button"
+        onClick={handleGoogleLogin}
+        style={{ display: 'none' }}
+        className="flex items-center gap-2 px-3 rounded-lg bg-white border border-gray-300 text-sm text-gray-700"
+      >
+        Google로 시작하기
+      </button>
+    </div>
   )
 }

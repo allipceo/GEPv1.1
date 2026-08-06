@@ -96,27 +96,22 @@ export const useAuthStore = create(
         if (!userId) return { success: false, error: '로그인이 필요합니다.' }
 
         const normalizedPhone = phoneNumber.replace(/[^\d+]/g, '')
-        const payload = {
-          real_name: realName.trim(),
-          phone_number: normalizedPhone,
-          approval_status: 'pending',
-          approval_requested_at: new Date().toISOString(),
-          approval_memo: memo.trim() || null,
-          status: 'active',
-        }
+        const trimmedRealName = realName.trim()
+        const trimmedMemo = memo.trim() || null
 
-        const { error } = await supabase
-          .from('users')
-          .update(payload)
-          .eq('user_id', userId)
+        const { error } = await supabase.rpc('submit_approval_request', {
+          p_real_name: trimmedRealName,
+          p_phone_number: normalizedPhone,
+          p_memo: trimmedMemo,
+        })
 
         if (error) return { success: false, error: error.message }
 
         set({
           approvalStatus: 'pending',
-          realName: payload.real_name,
-          phoneNumber: payload.phone_number,
-          approvalMemo: payload.approval_memo,
+          realName: trimmedRealName,
+          phoneNumber: normalizedPhone,
+          approvalMemo: trimmedMemo,
           status: 'active',
         })
 

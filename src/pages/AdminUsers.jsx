@@ -20,6 +20,12 @@ export default function AdminUsers() {
   const [error, setError] = useState('')
   const [memoByUser, setMemoByUser] = useState({})
 
+  const [newEmployeeId, setNewEmployeeId] = useState('')
+  const [newRealName, setNewRealName] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [createError, setCreateError] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+
   useEffect(() => {
     if (isAdmin) loadUsers()
   }, [isAdmin])
@@ -88,6 +94,62 @@ export default function AdminUsers() {
     await loadUsers()
   }
 
+  const handleCreateUser = async (event) => {
+    event.preventDefault()
+    setCreateError('')
+
+    if (!/^\d{6,}$/.test(newEmployeeId.trim())) {
+      setCreateError('사번은 숫자 6자리 이상이어야 합니다.')
+      return
+    }
+    if (!newRealName.trim()) {
+      setCreateError('실명을 입력해 주세요.')
+      return
+    }
+    if (newPhone.replace(/\D/g, '').length < 8) {
+      setCreateError('휴대폰 번호를 정확히 입력해 주세요.')
+      return
+    }
+
+    setIsCreating(true)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            employeeId: newEmployeeId.trim(),
+            realName: newRealName.trim(),
+            phone: newPhone.trim(),
+          }),
+        }
+      )
+
+      const result = await res.json()
+      if (!res.ok) {
+        setCreateError(result.error ?? '계정 생성에 실패했습니다.')
+        return
+      }
+
+      window.alert(`계정 생성 완료\n사번: ${result.employeeId}\n이메일: ${result.email}`)
+      setNewEmployeeId('')
+      setNewRealName('')
+      setNewPhone('')
+      await loadUsers()
+    } catch (err) {
+      setCreateError(err.message ?? '계정 생성 중 오류가 발생했습니다.')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   if (!isAdmin) {
     return (
       <AdminShell>
@@ -103,6 +165,50 @@ export default function AdminUsers() {
 
   return (
     <AdminShell>
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <h2 className="text-base font-bold text-gray-900">신규 직원 계정 생성</h2>
+        <form onSubmit={handleCreateUser} className="mt-3 flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+            사번
+            <input
+              value={newEmployeeId}
+              onChange={(event) => setNewEmployeeId(event.target.value)}
+              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+              placeholder="202504012"
+              inputMode="numeric"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+            실명
+            <input
+              value={newRealName}
+              onChange={(event) => setNewRealName(event.target.value)}
+              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+              placeholder="홍길동"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+            휴대폰
+            <input
+              value={newPhone}
+              onChange={(event) => setNewPhone(event.target.value)}
+              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+              placeholder="01012345678"
+              inputMode="tel"
+            />
+          </label>
+          <p className="text-xs text-gray-400">초기 비밀번호: 휴대폰 끝 8자리</p>
+          {createError && <p className="text-sm font-semibold text-red-600">{createError}</p>}
+          <button
+            type="submit"
+            disabled={isCreating}
+            className="min-h-[44px] rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {isCreating ? '생성 중...' : '계정 생성'}
+          </button>
+        </form>
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">사용자 승인 관리</h1>
