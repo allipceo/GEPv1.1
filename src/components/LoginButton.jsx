@@ -70,6 +70,7 @@ export default function LoginButton() {
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
           비밀번호
+          <span className="text-xs font-normal text-gray-500">(010을 생략하고 뒷번호 8자리만 입력하세요)</span>
           <input
             value={password}
             onChange={(event) => setPassword(event.target.value)}

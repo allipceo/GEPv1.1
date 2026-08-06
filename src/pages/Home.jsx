@@ -38,7 +38,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl border border-gray-100 flex flex-col items-center gap-5">
           <div className="text-center">
-            <h1 className="text-lg font-bold text-gray-900">GEP 손해보험 대리점</h1>
+            <h1 className="text-lg font-bold text-gray-900">GEP V3.0 손해보험중개사</h1>
             <p className="text-sm text-gray-500">학습 시스템</p>
           </div>
           <LoginButton />
