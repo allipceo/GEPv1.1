@@ -22,7 +22,7 @@ function saveSettings(settings) {
   } catch {}
 }
 
-export default function Settings({ isOpen, onClose, onSave }) {
+export default function Settings({ isOpen, onClose, onSave, onResetStats }) {
   const [name, setName]         = useState('')
   const [examDate, setExamDate] = useState('')
 
@@ -84,6 +84,16 @@ export default function Settings({ isOpen, onClose, onSave }) {
             저장
           </button>
         </div>
+
+        {onResetStats && (
+          <button
+            type="button"
+            onClick={onResetStats}
+            className="mt-1 min-h-[42px] rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700"
+          >
+            내 카운팅 초기화
+          </button>
+        )}
       </div>
     </div>
   )

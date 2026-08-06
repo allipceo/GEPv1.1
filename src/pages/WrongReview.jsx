@@ -14,6 +14,7 @@ import useExamStore from '../stores/examStore'
 import useStatsStore from '../stores/statsStore'
 import { useAuthStore } from '../stores/authStore'
 import { recordAttempt } from '../services/statsService'
+import { canCountAttempts } from '../services/countingEligibility'
 import QuestionView from '../components/QuestionView'
 import AnswerButtons from '../components/AnswerButtons'
 
@@ -52,6 +53,21 @@ export default function WrongReview() {
   const isReady      = useExamStore((s) => s.isReady)
   const authStatus   = useAuthStore((s) => s.authStatus)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
+  const userId       = useAuthStore((s) => s.userId)
+  const approvalStatus = useAuthStore((s) => s.approvalStatus)
+  const status       = useAuthStore((s) => s.status)
+  const isPaused     = useAuthStore((s) => s.isPaused)
+  const isAdmin      = useAuthStore((s) => s.isAdmin)
+  const resetBaselineAt = useAuthStore((s) => s.resetBaselineAt)
+  const canUseCounting = canCountAttempts({
+    authStatus,
+    serviceLevel,
+    userId,
+    approvalStatus,
+    status,
+    isPaused,
+    isAdmin,
+  })
 
   // 전체 틀린문제 (wrongCount 포함, 과목 필터 전)
   const [allWrongQuestions, setAllWrongQuestions] = useState([])
@@ -69,21 +85,28 @@ export default function WrongReview() {
 
   // 권한 가드 — 레벨2 미만이면 홈으로
   useEffect(() => {
-    if (authStatus !== 'authenticated' || serviceLevel < 2) navigate('/')
-  }, [authStatus, serviceLevel, navigate])
+    if (!canUseCounting) navigate('/')
+  }, [canUseCounting, navigate])
 
   // 틀린문제 목록 로드 (틀린 횟수 카운트, 많은 순 정렬)
   useEffect(() => {
     if (!isReady || questions.length === 0) return
-    if (authStatus !== 'authenticated') return
+    if (!canUseCounting) return
 
     const load = async () => {
       setIsLoading(true)
       try {
-        const { data, error: err } = await supabase
+        let query = supabase
           .from('attempts')
           .select('question_id')
+          .eq('user_id', userId)
           .eq('is_correct', false)
+
+        if (resetBaselineAt) {
+          query = query.gte('attempted_at', resetBaselineAt)
+        }
+
+        const { data, error: err } = await query
 
         if (err) {
           console.error('[WrongReview] attempts 조회 오류:', err.code, err.message, err.details)
@@ -118,7 +141,7 @@ export default function WrongReview() {
     }
 
     load()
-  }, [isReady, questions, authStatus])
+  }, [isReady, questions, canUseCounting, userId, resetBaselineAt])
 
   // 과목별 / 세부과목별 틀린문제 수
   const wrongBySubject    = {}

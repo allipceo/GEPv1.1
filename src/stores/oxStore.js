@@ -126,8 +126,8 @@ const useOxStore = create((set, get) => ({
     })
 
     // Supabase 기록 (게스트 userId=null이면 oxService 내부에서 스킵)
-    const userId = useAuthStore.getState().userId
-    oxService.recordAttempt(userId, oxId, isCorrect, {
+    const authState = useAuthStore.getState()
+    oxService.recordAttempt(authState, oxId, isCorrect, {
       answer:     answer,
       round:      question.round,
       subject:    state.subject,
@@ -189,9 +189,9 @@ const useOxStore = create((set, get) => ({
    */
   completeRound: () => {
     const state = get()
-    const userId = useAuthStore.getState().userId
+    const authState = useAuthStore.getState()
 
-    oxService.saveProgress(userId, state.subject, state.subSubject, {
+    oxService.saveProgress(authState, state.subject, state.subSubject, {
       roundNo:         state.roundNo,
       totalCumulative: state.totalCumulative,
       wrongCount:      state.wrongMap.size,

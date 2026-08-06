@@ -1,336 +1,221 @@
 /**
  * Home.jsx — 홈 화면
- * GEP_041: 3과목 아코디언 재설계 (기본 접힘, 대과목 정답률 표시)
+ * GEPv30-028: Phase1 5섹터 인사이트 대시보드로 전면 교체
  */
 
-import { useMemo, useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import useExamStore from '../stores/examStore'
+import { useNavigate } from 'react-router-dom'
 import useStatsStore from '../stores/statsStore'
-import Settings, { loadSettings } from '../components/Settings'
-import StatsPanel from '../components/StatsPanel'
 import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
+import { canCountAttempts } from '../services/countingEligibility'
 
-// 3과목 → 세부과목 구성
-const STUDY_SECTIONS = [
-  {
-    label: '법령', mainSubject: '법령', textColor: 'text-blue-600',
-    subs: ['보험업법', '상법', '세제재무', '위험관리'],
-  },
-  {
-    label: '손보1부', mainSubject: '손보1부', textColor: 'text-green-600',
-    subs: ['보증보험', '연금저축', '자동차보험', '특종보험'],
-  },
-  {
-    label: '손보2부', mainSubject: '손보2부', textColor: 'text-purple-600',
-    subs: ['재보험', '항공우주', '해상보험', '화재보험'],
-  },
-]
+const EXAM_DATE = new Date('2026-11-15')
+const SUBJECTS = ['법령', '손보1부', '손보2부']
+const TOTAL_BY_SUBJECT = { '법령': 360, '손보1부': 360, '손보2부': 360 }
 
-// 정답률 색상
-function getAccuracyColor(pct) {
-  if (pct === null) return 'text-gray-400'
-  if (pct >= 60)   return 'text-green-600'
-  if (pct >= 40)   return 'text-yellow-600'
-  return 'text-red-600'
-}
-
-// D-day 계산
-function calcDday(examDate) {
-  if (!examDate) return null
+function calcDday() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const exam = new Date(examDate)
-  return Math.ceil((exam - today) / (1000 * 60 * 60 * 24))
+  return Math.ceil((EXAM_DATE - today) / (1000 * 60 * 60 * 24))
 }
 
 export default function Home() {
   const navigate = useNavigate()
 
-  const setSubject    = useExamStore((s) => s.setSubject)
-  const setRound      = useExamStore((s) => s.setRound)
-  const setSubSubject = useExamStore((s) => s.setSubSubject)
-  const questions     = useExamStore((s) => s.questions)
-
-  const [settings, setSettings]         = useState({ name: '', examDate: '' })
-  const [showSettings, setShowSettings] = useState(false)
-  const [openSections, setOpenSections] = useState({})   // 기본 모두 접힘
-
-  useEffect(() => {
-    setSettings(loadSettings())
-  }, [])
-
-  const dday = calcDday(settings.examDate)
-
-  const stats        = useStatsStore((s) => s.stats)
-  const authStatus   = useAuthStore((s) => s.authStatus)
+  const stats = useStatsStore((s) => s.stats)
+  const authStatus = useAuthStore((s) => s.authStatus)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
-  const email        = useAuthStore((s) => s.email)
-  const isGuest      = authStatus === 'guest' && serviceLevel < 2
+  const realName = useAuthStore((s) => s.realName)
+  const userId = useAuthStore((s) => s.userId)
+  const approvalStatus = useAuthStore((s) => s.approvalStatus)
+  const status = useAuthStore((s) => s.status)
+  const isPaused = useAuthStore((s) => s.isPaused)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
-  // 레벨2+ 오답 횟수 (로컬 statsStore 기준)
-  const wrongCount = (authStatus === 'authenticated' && serviceLevel >= 2)
-    ? Math.max(0, stats.total.solved - stats.total.correct)
-    : null
+  if (authStatus === 'guest') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl border border-gray-100 flex flex-col items-center gap-5">
+          <div className="text-center">
+            <h1 className="text-lg font-bold text-gray-900">GEP V3.0 손해보험중개사</h1>
+            <p className="text-sm text-gray-500">학습 시스템</p>
+          </div>
+          <LoginButton />
+        </div>
+      </div>
+    )
+  }
 
-  // 세부과목별 문제 수
-  const subjectQCounts = useMemo(() => {
-    const counts = {}
-    questions.forEach((q) => {
-      const key = `${q.subject}__${q.subSubject}`
-      counts[key] = (counts[key] ?? 0) + 1
-    })
-    return counts
-  }, [questions])
+  const canUseCounting = canCountAttempts({
+    authStatus, serviceLevel, userId, approvalStatus, status, isPaused, isAdmin,
+  })
 
-  // 대과목별 전체 정답률
-  const mainSubjectStats = useMemo(() => {
-    const result = {}
-    STUDY_SECTIONS.forEach(({ label, subs }) => {
-      const agg = subs.reduce(
-        (acc, sub) => {
-          const d = stats.bySubject[sub] ?? { solved: 0, correct: 0 }
-          return { solved: acc.solved + d.solved, correct: acc.correct + d.correct }
-        },
-        { solved: 0, correct: 0 }
-      )
-      result[label] = agg.solved > 0 ? Math.round((agg.correct / agg.solved) * 100) : null
-    })
-    return result
-  }, [stats])
+  const dDay = calcDday()
 
-  const toggleSection = (label) =>
-    setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }))
+  const getAccuracy = (subject) => {
+    const s = stats.bySubject[subject]
+    if (!s || s.solved === 0) return 0
+    return Math.round((s.correct / s.solved) * 100)
+  }
 
-  const handleSubjectStudy = (mainSubject, sub) => {
-    setSubject(mainSubject)
-    setRound('전체')
-    setSubSubject(sub)
-    navigate('/question')
+  const accuracies = SUBJECTS.map(getAccuracy)
+  const hasAnyRecord = SUBJECTS.some((subject) => (stats.bySubject[subject]?.solved || 0) > 0)
+  const avgAccuracy = hasAnyRecord
+    ? Math.round(accuracies.reduce((a, b) => a + b, 0) / accuracies.length)
+    : 0
+
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    const key = d.toISOString().slice(0, 10)
+    return { date: key.slice(5), solved: stats.daily[key]?.solved || 0 }
+  })
+  const maxSolved = Math.max(...last7Days.map((d) => d.solved), 1)
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.warn('[GEP] 로그아웃 실패:', error.message)
+    }
+    useAuthStore.getState().clearAuth()
+    window.location.href = '/'
   }
 
   return (
-    <>
-      <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
+    <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-4">
 
-        {/* 상단: 타이틀 + D-day + 설정 */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">GEP 보험중개사</h1>
-            {dday !== null ? (
-              <p className="text-sm font-semibold text-blue-600 mt-0.5">
-                {dday === 0 ? 'D-Day' : dday > 0 ? `D-${dday}일` : '시험 종료'}
-              </p>
-            ) : (
-              <button
-                onClick={() => setShowSettings(true)}
-                className="text-xs text-gray-400 underline mt-0.5"
-              >
-                시험일 설정
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {authStatus === 'guest' ? (
-              <LoginButton />
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-700">
-                  {email?.slice(0, 2) ?? '?'}
-                </span>
-                <button
-                  onClick={async () => {
-                    const { error } = await supabase.auth.signOut()
-                    if (error) console.warn('[GEP] 로그아웃 실패:', error.message)
-                    useAuthStore.getState().clearAuth()
-                  }}
-                  className="text-xs text-gray-400 hover:text-gray-600 px-2 py-2"
-                  style={{ minHeight: '44px' }}
-                >
-                  로그아웃
-                </button>
-              </div>
-            )}
-            <button
-              onClick={() => setShowSettings(true)}
-              className="text-gray-400 hover:text-gray-700 p-1"
-              aria-label="설정"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          </div>
+      {/* 섹터1: 헤더 */}
+      <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">
+        <div>
+          <span className="font-bold text-lg">{realName || '학습자'} 님</span>
+          <span className="ml-3 text-gray-500 text-sm">
+            시험까지{' '}
+            <span className="text-blue-600 font-bold">
+              {dDay >= 0 ? `D-${dDay}` : '시험 종료'}
+            </span>
+            일<span className="text-xs text-gray-400 ml-1">(2026.11.15)</span>
+          </span>
         </div>
-
-        {/* 학습 현황 대시보드 */}
-        <StatsPanel homeMode allStats={stats} isGuest={isGuest} wrongCount={wrongCount} />
-
-        {/* 레벨2 전용 — 틀린문제 풀기 버튼 */}
-        {authStatus === 'authenticated' && serviceLevel >= 2 && (
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => navigate('/admin/users')}
+              className="text-sm text-gray-500 border rounded px-2 py-1"
+            >
+              관리자
+            </button>
+          )}
           <button
-            onClick={() => navigate('/wrong-review')}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-100 transition-colors"
+            type="button"
+            onClick={handleLogout}
+            className="text-xs text-gray-400 hover:text-gray-600 px-2 py-2"
+            style={{ minHeight: '44px' }}
           >
-            <div className="flex items-center gap-2">
-              <span className="text-base">📝</span>
-              <span className="text-sm font-semibold text-red-700">틀린문제 풀기</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {wrongCount > 0 && (
-                <span className="text-xs font-semibold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">
-                  {wrongCount}개
-                </span>
-              )}
-              <span className="text-red-400 text-sm">›</span>
-            </div>
+            로그아웃
           </button>
+        </div>
+      </div>
+
+      {/* 섹터2: 득점현황 */}
+      <div className="p-4 bg-white rounded-lg shadow">
+        <h2 className="font-bold mb-3">득점현황</h2>
+        {SUBJECTS.map((subject) => {
+          const acc = getAccuracy(subject)
+          const barColor = acc < 40 ? 'bg-red-400' : acc < 60 ? 'bg-yellow-400' : 'bg-green-400'
+          const label = acc < 40 ? '⚠ 과락위험' : acc < 60 ? '합격권 진입중' : '✓ 합격권'
+          return (
+            <div key={subject} className="mb-3">
+              <div className="flex justify-between text-sm mb-1">
+                <span>{subject}</span>
+                <span>{acc}% <span className="text-xs text-gray-500">{label}</span></span>
+              </div>
+              <div className="relative h-4 bg-gray-100 rounded">
+                <div className={`h-4 rounded ${barColor}`} style={{ width: `${acc}%` }} />
+                <div className="absolute top-0 bottom-0 border-l-2 border-red-500 border-dashed" style={{ left: '40%' }} />
+                <div className="absolute top-0 bottom-0 border-l-2 border-blue-500 border-dashed" style={{ left: '60%' }} />
+              </div>
+            </div>
+          )
+        })}
+        {hasAnyRecord ? (
+          <div className="text-sm text-right text-gray-600 mt-2">
+            전체 평균 <span className="font-bold">{avgAccuracy}%</span>
+            <span className="text-xs text-gray-400 ml-1">(합격기준 60%)</span>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-2">아직 풀이 기록이 없습니다</p>
         )}
+      </div>
 
-        {/* OX 진위형 버튼 */}
-        <button
-          onClick={() => navigate('/ox')}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 active:bg-blue-100 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base">📝</span>
-            <span className="text-sm font-semibold text-blue-700">OX 진위형 문제 풀기</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-blue-400 font-normal">3,824문제</span>
-            <span className="text-blue-400 text-sm">›</span>
-          </div>
-        </button>
-
-        {/* 통합 틀린문제 복습 버튼 */}
-        <button
-          onClick={() => navigate('/unified-wrong')}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 active:bg-indigo-100 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base">📚</span>
-            <span className="text-sm font-semibold text-indigo-700">통합 틀린문제 복습</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-indigo-400 font-normal">MCQ+OX+모의고사</span>
-            <span className="text-indigo-400 text-sm">›</span>
-          </div>
-        </button>
-
-        {/* 모의고사 버튼 */}
-        <Link
-          to="/mock"
-          className="block p-4 bg-white rounded-lg border-2 border-indigo-200 hover:border-indigo-400 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📝</span>
-              <div>
-                <div className="font-semibold text-gray-900">모의고사</div>
-                <div className="text-sm text-gray-500">실전 9회 모의고사</div>
-              </div>
+      {/* 섹터3: 누적 풀이 현황 */}
+      <div className="p-4 bg-white rounded-lg shadow">
+        <h2 className="font-bold mb-3">누적 풀이 현황</h2>
+        {SUBJECTS.map((subject) => {
+          const solved = stats.bySubject[subject]?.solved || 0
+          const total = TOTAL_BY_SUBJECT[subject]
+          return (
+            <div key={subject} className="flex justify-between py-1 text-sm border-b last:border-0">
+              <span>{subject}</span>
+              <span className="text-gray-600">
+                {total}문제 / 누적 <span className="font-bold">{solved.toLocaleString()}</span>회 풀이
+              </span>
             </div>
-            <span className="text-indigo-600">→</span>
-          </div>
-        </Link>
+          )
+        })}
+      </div>
 
-        {/* 맞춤 모의고사 버튼 */}
-        <Link
-          to="/custom-mock"
-          className="block p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 hover:border-purple-400 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🎯</span>
-              <div>
-                <div className="font-semibold text-gray-900">맞춤 모의고사</div>
-                <div className="text-sm text-gray-500">무한 랜덤 조합</div>
-              </div>
-            </div>
-            <span className="text-purple-600">→</span>
-          </div>
-        </Link>
-
-        {/* 과목 선택 — 3개 아코디언 (기본 모두 접힘) */}
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-gray-500 px-1">과목 선택</p>
-          {STUDY_SECTIONS.map((section) => {
-            const isOpen = !!openSections[section.label]
-            const pct    = mainSubjectStats[section.label]
+      {/* 섹터4: 최근 7일 학습량 */}
+      <div className="p-4 bg-white rounded-lg shadow">
+        <h2 className="font-bold mb-3">최근 7일 학습량</h2>
+        <div className="flex items-end gap-1 h-20">
+          {last7Days.map(({ date, solved }) => {
+            const heightPct = Math.round((solved / maxSolved) * 100)
             return (
-              <div key={section.label} className="rounded-xl overflow-hidden border border-gray-200">
-
-                {/* 아코디언 헤더 */}
-                <button
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                  onClick={() => toggleSection(section.label)}
-                >
-                  <span className={`text-sm font-semibold ${section.textColor}`}>
-                    {section.label}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${getAccuracyColor(pct)}`}>
-                      {pct !== null ? `${pct}%` : '-'}
-                    </span>
-                    <span
-                      className="text-gray-400 text-sm transition-transform duration-200"
-                      style={{ display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'none' }}
-                    >
-                      ›
-                    </span>
-                  </div>
-                </button>
-
-                {/* 아코디언 바디 — 세부과목 */}
-                {isOpen && (
-                  <div className="border-t border-gray-100 flex flex-col">
-                    {section.subs.map((sub, idx) => {
-                      const qCount = subjectQCounts[`${section.mainSubject}__${sub}`] ?? 0
-                      const s      = stats.bySubject[sub]
-                      const subPct = s && s.solved > 0
-                        ? Math.round((s.correct / s.solved) * 100)
-                        : null
-                      const solved = s?.solved ?? 0
-                      return (
-                        <button
-                          key={sub}
-                          className={`flex items-center gap-3 w-full text-left px-4 py-3 bg-white hover:bg-gray-50 active:bg-gray-50 transition-colors ${idx > 0 ? 'border-t border-gray-100' : ''}`}
-                          onClick={() => handleSubjectStudy(section.mainSubject, sub)}
-                        >
-                          <span className="flex-1 text-sm text-gray-700">{sub}</span>
-                          {isGuest ? (
-                            <span className="text-xs text-gray-400">
-                              {Math.min(solved, 30)}/30
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">{qCount}문제</span>
-                          )}
-                          <span className={`text-sm font-semibold w-14 text-right shrink-0 ${getAccuracyColor(subPct)}`}>
-                            {subPct !== null ? `${subPct}%${subPct < 40 ? ' ⚠️' : ''}` : '-'}
-                          </span>
-                          <span className="text-gray-300 text-sm">›</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
+              <div key={date} className="flex flex-col items-center flex-1">
+                <span className="text-xs text-gray-500">{solved || ''}</span>
+                <div
+                  className="w-full bg-blue-400 rounded-t"
+                  style={{ height: `${heightPct}%`, minHeight: solved > 0 ? '4px' : '0' }}
+                />
+                <span className="text-xs text-gray-400 mt-1">{date}</span>
               </div>
             )
           })}
         </div>
-
       </div>
 
-      {/* 설정 팝업 */}
-      <Settings
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        onSave={(s) => setSettings(s)}
-      />
-    </>
+      {/* 섹터5: 풀이 옵션 */}
+      <div className="p-4 bg-white rounded-lg shadow">
+        <h2 className="font-bold mb-3">학습 시작</h2>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/service-a')}
+            className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold"
+          >
+            기출 회차 순서풀기
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/service-b')}
+            className="w-full py-3 bg-green-600 text-white rounded-lg font-bold"
+          >
+            과목별 랜덤풀기
+          </button>
+          {canUseCounting && (
+            <button
+              type="button"
+              onClick={() => navigate('/wrong-review')}
+              className="w-full py-3 bg-orange-500 text-white rounded-lg font-bold"
+            >
+              틀린문제 풀기
+            </button>
+          )}
+        </div>
+      </div>
+
+    </div>
   )
 }

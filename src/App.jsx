@@ -7,7 +7,10 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import useExamStore from './stores/examStore'
 import { useAuthStore } from './stores/authStore'
+import useStatsStore from './stores/statsStore'
 import Home from './pages/Home'
+import ServiceAHome from './pages/ServiceAHome'
+import ServiceBHome from './pages/ServiceBHome'
 import Question from './pages/Question'
 import Result from './pages/Result'
 import WrongReview from './pages/WrongReview'
@@ -28,10 +31,17 @@ import UnifiedWrongReview from './pages/UnifiedWrongReview'
 import ChallengeMode       from './pages/ChallengeMode'
 import ChallengeResult     from './pages/ChallengeResult'
 import ProgressTracker     from './pages/ProgressTracker'
+import AdminUsers          from './pages/AdminUsers'
+import RequireLogin        from './components/RequireLogin'
+
+function protectedPage(element, options = {}) {
+  return <RequireLogin {...options}>{element}</RequireLogin>
+}
 
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
   const initAuthListener = useAuthStore((s) => s.initAuthListener)
+  const userId           = useAuthStore((s) => s.userId)
 
   useEffect(() => {
     loadQuestions()
@@ -39,32 +49,39 @@ export default function App() {
     return () => subscription?.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    useStatsStore.getState().bindUser(userId ?? null)
+  }, [userId])
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/question" element={<Question />} />
-        <Route path="/result" element={<Result />} />
-        <Route path="/wrong-review" element={<WrongReview />} />
-        <Route path="/ox" element={<OXHome />} />
-        <Route path="/ox/:subjectKey" element={<OXSubject />} />
-        <Route path="/ox/:subjectKey/:subSubject" element={<OXQuiz />} />
-        <Route path="/ox/:subjectKey/:subSubject/review" element={<OXReview />} />
-        <Route path="/mock" element={<MockExamHome />} />
-        <Route path="/mock/:round/:part" element={<MockExamQuiz />} />
-        <Route path="/mock/:round/:part/result" element={<MockExamResult />} />
-        <Route path="/mock/:round/result" element={<MockExamResult />} />
-        <Route path="/mock/:round/break" element={<MockExamBreak />} />
-        <Route path="/mock/stats" element={<MockExamStats />} />
-        <Route path="/custom-mock" element={<CustomMockHome />} />
-        <Route path="/custom-mock/:sessionId/part1" element={<CustomMockQuiz />} />
-        <Route path="/custom-mock/:sessionId/part2" element={<CustomMockQuiz />} />
-        <Route path="/custom-mock/:sessionId/result" element={<CustomMockResult />} />
-        <Route path="/custom-mock/stats" element={<CustomMockStats />} />
-        <Route path="/unified-wrong" element={<UnifiedWrongReview />} />
-        <Route path="/unified-wrong/challenge/:minCount" element={<ChallengeMode />} />
-        <Route path="/unified-wrong/result" element={<ChallengeResult />} />
-        <Route path="/unified-wrong/progress" element={<ProgressTracker />} />
+        <Route path="/service-a" element={protectedPage(<ServiceAHome />)} />
+        <Route path="/service-b" element={protectedPage(<ServiceBHome />)} />
+        <Route path="/admin/users" element={protectedPage(<AdminUsers />, { requireApproval: false })} />
+        <Route path="/question" element={protectedPage(<Question />)} />
+        <Route path="/result" element={protectedPage(<Result />)} />
+        <Route path="/wrong-review" element={protectedPage(<WrongReview />)} />
+        <Route path="/ox" element={protectedPage(<OXHome />)} />
+        <Route path="/ox/:subjectKey" element={protectedPage(<OXSubject />)} />
+        <Route path="/ox/:subjectKey/:subSubject" element={protectedPage(<OXQuiz />)} />
+        <Route path="/ox/:subjectKey/:subSubject/review" element={protectedPage(<OXReview />)} />
+        <Route path="/mock" element={protectedPage(<MockExamHome />)} />
+        <Route path="/mock/:round/:part" element={protectedPage(<MockExamQuiz />)} />
+        <Route path="/mock/:round/:part/result" element={protectedPage(<MockExamResult />)} />
+        <Route path="/mock/:round/result" element={protectedPage(<MockExamResult />)} />
+        <Route path="/mock/:round/break" element={protectedPage(<MockExamBreak />)} />
+        <Route path="/mock/stats" element={protectedPage(<MockExamStats />)} />
+        <Route path="/custom-mock" element={protectedPage(<CustomMockHome />)} />
+        <Route path="/custom-mock/:sessionId/part1" element={protectedPage(<CustomMockQuiz />)} />
+        <Route path="/custom-mock/:sessionId/part2" element={protectedPage(<CustomMockQuiz />)} />
+        <Route path="/custom-mock/:sessionId/result" element={protectedPage(<CustomMockResult />)} />
+        <Route path="/custom-mock/stats" element={protectedPage(<CustomMockStats />)} />
+        <Route path="/unified-wrong" element={protectedPage(<UnifiedWrongReview />)} />
+        <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />)} />
+        <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />)} />
+        <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />)} />
       </Routes>
     </BrowserRouter>
   )
