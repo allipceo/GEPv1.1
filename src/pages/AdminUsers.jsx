@@ -26,6 +26,10 @@ export default function AdminUsers() {
   const [createError, setCreateError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
+  const [editingUserId, setEditingUserId] = useState(null)
+  const [editRealName, setEditRealName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+
   useEffect(() => {
     if (isAdmin) loadUsers()
   }, [isAdmin])
@@ -94,6 +98,33 @@ export default function AdminUsers() {
     await loadUsers()
   }
 
+  const handleUpdateUser = async (targetUserId) => {
+    if (!editRealName.trim()) {
+      window.alert('실명을 입력해 주세요.')
+      return
+    }
+    if (editPhone.length !== 8) {
+      window.alert('휴대폰 뒷 8자리를 정확히 입력해 주세요.')
+      return
+    }
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        real_name: editRealName.trim(),
+        phone_number: '010' + editPhone,
+      })
+      .eq('user_id', targetUserId)
+
+    if (updateError) {
+      window.alert('수정 실패: ' + updateError.message)
+      return
+    }
+
+    setEditingUserId(null)
+    await loadUsers()
+  }
+
   const handleCreateUser = async (event) => {
     event.preventDefault()
     setCreateError('')
@@ -106,8 +137,8 @@ export default function AdminUsers() {
       setCreateError('실명을 입력해 주세요.')
       return
     }
-    if (newPhone.replace(/\D/g, '').length < 8) {
-      setCreateError('휴대폰 번호를 정확히 입력해 주세요.')
+    if (newPhone.length !== 8) {
+      setCreateError('휴대폰 뒷 8자리를 정확히 입력해 주세요.')
       return
     }
 
@@ -127,7 +158,7 @@ export default function AdminUsers() {
           body: JSON.stringify({
             employeeId: newEmployeeId.trim(),
             realName: newRealName.trim(),
-            phone: newPhone.trim(),
+            phone: '010' + newPhone,
           }),
         }
       )
@@ -189,15 +220,22 @@ export default function AdminUsers() {
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
             휴대폰
-            <input
-              value={newPhone}
-              onChange={(event) => setNewPhone(event.target.value)}
-              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-              placeholder="01012345678"
-              inputMode="tel"
-            />
+            <div className="flex items-center min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm focus-within:border-blue-500">
+              <span className="text-gray-500 font-normal mr-1">010 -</span>
+              <input
+                value={newPhone}
+                onChange={(event) => {
+                  const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
+                  setNewPhone(digits)
+                }}
+                className="flex-1 outline-none text-sm font-normal"
+                placeholder="2067 6442"
+                inputMode="numeric"
+                maxLength={8}
+              />
+            </div>
           </label>
-          <p className="text-xs text-gray-400">초기 비밀번호: 휴대폰 끝 8자리</p>
+          <p className="text-xs text-gray-400">초기 비밀번호: 입력한 8자리 숫자</p>
           {createError && <p className="text-sm font-semibold text-red-600">{createError}</p>}
           <button
             type="submit"
@@ -245,6 +283,65 @@ export default function AdminUsers() {
                   {STATUS_LABEL[user.approval_status] ?? user.approval_status}
                 </span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingUserId(user.user_id)
+                  setEditRealName(user.real_name || '')
+                  setEditPhone((user.phone_number || '').replace(/[^0-9]/g, '').slice(-8))
+                }}
+                className="text-xs text-blue-600 underline mt-1"
+              >
+                정보 수정
+              </button>
+
+              {editingUserId === user.user_id && (
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+                    실명
+                    <input
+                      value={editRealName}
+                      onChange={(event) => setEditRealName(event.target.value)}
+                      className="min-h-[40px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500 bg-white"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+                    휴대폰
+                    <div className="flex items-center min-h-[40px] rounded-lg border border-gray-300 px-3 text-sm bg-white focus-within:border-blue-500">
+                      <span className="text-gray-500 font-normal mr-1">010 -</span>
+                      <input
+                        value={editPhone}
+                        onChange={(event) => {
+                          const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
+                          setEditPhone(digits)
+                        }}
+                        className="flex-1 outline-none text-sm font-normal"
+                        placeholder="20676442"
+                        inputMode="numeric"
+                        maxLength={8}
+                      />
+                    </div>
+                  </label>
+                  <p className="text-xs text-gray-400">* 사번 변경은 지원하지 않습니다. 필요 시 계정 삭제 후 재생성하세요.</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateUser(user.user_id)}
+                      className="flex-1 min-h-[40px] rounded-lg bg-blue-600 text-sm font-semibold text-white"
+                    >
+                      저장
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingUserId(null)}
+                      className="flex-1 min-h-[40px] rounded-lg border border-gray-300 text-sm font-semibold text-gray-600"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <textarea
                 value={memoByUser[user.user_id] ?? user.approval_memo ?? ''}
