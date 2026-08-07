@@ -393,6 +393,25 @@ if (!userId) {
 }
 ```
 
+### 🔴 로그아웃 필수 패턴 (위반 시 자동로그인 버그)
+```javascript
+const handleLogout = async () => {
+  useAuthStore.getState().clearAuth()                        // 1. 메모리 즉시 초기화
+  try { await supabase.auth.signOut({ scope: 'global' }) }  // 2. 서버 세션 삭제 (scope 필수)
+  catch (e) {}
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('sb-') || k.startsWith('gep'))
+    .forEach(k => localStorage.removeItem(k))               // 3. 모든 관련 키 삭제
+  window.location.href = '/'
+}
+```
+- `scope: 'global'` 누락 시: 리로드 후 Supabase가 서버 세션 복원 → 자동 로그인
+- `clearAuth()` 누락 시: 리다이렉트 직전까지 메모리 상태 authenticated 유지
+
+### 🔴 userId별 localStorage 분리 (신규 store 추가 시 필수 체크)
+- 모든 store는 `{BASE_KEY}:{userId}` 패턴으로 키 분리해야 함
+- `statsStore` ✅ / `examStore` ✅ (GEPv30-078에서 수정) — 신규 store 추가 시 동일 패턴 적용
+
 ---
 
 ## 11. 주요 교훈 (Phase 1-6)
@@ -408,6 +427,9 @@ if (!userId) {
 | 재응시 결과 혼재 | handleRetry가 RESULT_LS_KEY 미삭제 | 두 키 모두 삭제 | localStorage 클리어는 progress+result 세트로 |
 | 중복 제출 | 제출 버튼 isSubmitting 가드 없음 | isSubmitting 상태 추가 | 비가역 액션엔 항상 제출 중 가드 |
 | **🚨 GEP_085~095 문서 누락** | **완료 후 순서에서 문서화가 push 뒤에 위치** | **CLAUDE.md 개정 — 문서화를 push 전 필수 단계로 격상** | **문서화는 배포 전에. 순서 바꿈 절대 금지** |
+| **🚨 로그아웃 2시간 삽질** | `signOut()` scope 누락 + 콘솔 미확인 + 코드 추론 수정 | `scope:'global'` + `clearAuth()` 선행 + localStorage 전체 삭제 | **버그 발생 시 콘솔 에러 먼저. 코드 추론으로 수정 금지** |
+| **🚨 examStore userId 미분리** | statsStore만 분리, examStore 누락 | `bindExamUser()` + `getStorageKey(userId)` 추가 | **신규 store 추가 시 userId 키 분리 여부 체크리스트 필수** |
+| **🚨 자동로그인 잔류** | 이전 테스트 계정 토큰 localStorage 잔류 | Chrome DevTools → localStorage 전체 삭제 | **계정 전환 시 반드시 localStorage 초기화** |
 
 ---
 
