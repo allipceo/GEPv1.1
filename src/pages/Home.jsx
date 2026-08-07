@@ -98,18 +98,25 @@ export default function Home() {
   const maxSolved = Math.max(...last7Days.map((d) => d.solved), 1)
 
   const handleLogout = async () => {
+    // Step 1: 메모리 상태 즉시 guest로 전환 (UI 반응)
+    useAuthStore.getState().clearAuth()
+
+    // Step 2: Supabase 서버 + 모든 기기 세션 삭제
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'global' })
     } catch (e) {
       console.warn('[GEP] signOut exception:', e)
     }
-    // signOut 성공/실패 무관하게 모든 인증 관련 localStorage 키 강제 삭제
-    // → 페이지 리로드 후 initAuthListener의 INITIAL_SESSION이 session=null로 동작
+
+    // Step 3: 모든 GEP / Supabase localStorage 키 강제 삭제
+    // (persist 미들웨어 재기록 포함)
     try {
-      Object.keys(localStorage)
-        .filter(k => k.startsWith('sb-') || k === 'gep_auth_v1')
-        .forEach(k => localStorage.removeItem(k))
+      const keysToDelete = Object.keys(localStorage).filter(
+        k => k.startsWith('sb-') || k.startsWith('gep') || k.startsWith('gep:')
+      )
+      keysToDelete.forEach(k => localStorage.removeItem(k))
     } catch {}
+
     window.location.href = '/'
   }
 
