@@ -10,7 +10,7 @@
 | 항목 | 내용 |
 |------|------|
 | 배포 URL | https://gepv11.vercel.app |
-| 최신 문서 번호 | GEPv30-079 |
+| 최신 문서 번호 | GEPv30-080 |
 | 브랜치 | main (Vercel 자동배포) |
 | 인증 방식 | 사번@gep.local + 8자리 전화번호 뒷자리 |
 | 로그인 UI | 010- 하드코딩, 8자리만 입력 |
@@ -21,7 +21,7 @@
 
 | 우선순위 | 항목 | 비고 |
 |----------|------|------|
-| 🔴 즉시 | GEPv30-079 배포 확인 | 로그아웃 수정 — 고팀장 push 후 Chrome 검증 필요 |
+| 🔴 즉시 | GEPv30-080 배포 확인 | SW 캐시 버그 수정 — 고팀장 push 후 Chrome 껐다켜서 검증 |
 | 🟡 예정 | OX 진위형 통계 화면 | S2 단계 — 현재 미개발 |
 | 🟡 예정 | 원래 개발 순서 복귀 | 버그 수정 완료 후 |
 
@@ -63,3 +63,16 @@ gep:v1:examStore:{userId}     → examStore
 | GEPv30-077 | 로그인 UI 수정 (010- 하드코딩, 8자리 입력), 대표님 계정 등록 |
 | GEPv30-078 | examStore userId 분리 버그 수정 |
 | GEPv30-079 | 로그아웃 버그 수정 (scope:global + clearAuth 선행) |
+| GEPv30-080 | Chrome 재시작 후 로그인 불가 버그 수정 (SW navigate 캐시 제외, vercel.json 헤더 추가) |
+
+---
+
+## Service Worker 캐시 규칙 (절대 변경 금지)
+
+- `CACHE_NAME`: 변경 시 모든 기존 캐시 삭제됨 (의도적 갱신 시만 변경)
+- **navigate 요청(index.html)**: SW 캐시 완전 제외 → 항상 서버에서 최신 버전
+- **Supabase / OAuth URL**: SW 캐시 완전 제외
+- **assets/(*.js, *.css)**: 1년 캐시 (hash URL이므로 안전)
+- **sw.js**: no-cache (Vercel 헤더로 설정됨)
+
+이 규칙을 깨면 Chrome 재시작 후 구버전 앱 로드 → 로그인 불가 버그 재발생.
