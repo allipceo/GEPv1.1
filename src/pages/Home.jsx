@@ -14,6 +14,17 @@ const EXAM_DATE = new Date('2026-11-15')
 const SUBJECTS = ['법령', '손보1부', '손보2부']
 const TOTAL_BY_SUBJECT = { '법령': 360, '손보1부': 360, '손보2부': 360 }
 
+/**
+ * bySubject 키는 세부과목(subSubject)으로 저장됨 (statsService.js 참조).
+ * 주요과목 통계는 해당 세부과목들을 합산하여 계산.
+ * 값은 exams.json의 실제 subSubject 값과 일치해야 함.
+ */
+const SUBJECTS_MAP = {
+  '법령':    ['보험업법', '상법', '세제재무', '위험관리'],
+  '손보1부': ['보증보험', '연금저축', '자동차보험', '특종보험'],
+  '손보2부': ['재보험', '항공우주', '해상보험', '화재보험'],
+}
+
 function calcDday() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -53,14 +64,27 @@ export default function Home() {
 
   const dDay = calcDday()
 
+  // 세부과목 합산으로 주요과목 정답률 계산
+  // (bySubject는 세부과목 키로 저장되므로 SUBJECTS_MAP으로 집계)
+  const getSubjectAgg = (subject) => {
+    const subs = SUBJECTS_MAP[subject] ?? []
+    return subs.reduce(
+      (acc, sub) => {
+        const d = stats.bySubject[sub] ?? { solved: 0, correct: 0 }
+        return { solved: acc.solved + d.solved, correct: acc.correct + d.correct }
+      },
+      { solved: 0, correct: 0 }
+    )
+  }
+
   const getAccuracy = (subject) => {
-    const s = stats.bySubject[subject]
-    if (!s || s.solved === 0) return 0
-    return Math.round((s.correct / s.solved) * 100)
+    const agg = getSubjectAgg(subject)
+    if (agg.solved === 0) return 0
+    return Math.round((agg.correct / agg.solved) * 100)
   }
 
   const accuracies = SUBJECTS.map(getAccuracy)
-  const hasAnyRecord = SUBJECTS.some((subject) => (stats.bySubject[subject]?.solved || 0) > 0)
+  const hasAnyRecord = Object.values(stats.bySubject).some((s) => s.solved > 0)
   const avgAccuracy = hasAnyRecord
     ? Math.round(accuracies.reduce((a, b) => a + b, 0) / accuracies.length)
     : 0
@@ -160,7 +184,7 @@ export default function Home() {
       <div className="p-4 bg-white rounded-lg shadow">
         <h2 className="font-bold mb-3">누적 풀이 현황</h2>
         {SUBJECTS.map((subject) => {
-          const solved = stats.bySubject[subject]?.solved || 0
+          const solved = getSubjectAgg(subject).solved
           const total = TOTAL_BY_SUBJECT[subject]
           return (
             <div key={subject} className="flex justify-between py-1 text-sm border-b last:border-0">
@@ -210,6 +234,13 @@ export default function Home() {
             className="w-full py-3 bg-green-600 text-white rounded-lg font-bold"
           >
             과목별 랜덤풀기
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/ox')}
+            className="w-full py-3 bg-purple-600 text-white rounded-lg font-bold"
+          >
+            OX 진위형 학습
           </button>
           {canUseCounting && (
             <button

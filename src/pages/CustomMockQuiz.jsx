@@ -417,13 +417,16 @@ export default function CustomMockQuiz() {
           <span className="text-xs text-gray-400">{currentIndex + 1}번</span>
         </div>
 
-        {/* 문제 원문 — white-space: pre-wrap으로 그대로 표시 */}
-        <p
-          className="text-sm text-gray-900 leading-relaxed"
-          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-        >
-          {question.questionRaw}
-        </p>
+        {/* 문제 원문 — \n 기준 분리, 각 줄 독립 블록, 화면폭 자연 줄바꿈 */}
+        <div className="text-sm text-gray-900 leading-relaxed">
+          {question.questionRaw.split('\n').map((line, i) =>
+            line.trim() === '' ? (
+              <div key={i} className="h-2" />
+            ) : (
+              <p key={i} className="mb-0.5">{line}</p>
+            )
+          )}
+        </div>
       </div>
 
       {/* ── 하단 고정 패널 ────────────────────────────────────────────────── */}

@@ -70,8 +70,11 @@ const useOxStore = create((set, get) => ({
       if (!res.ok) throw new Error(`[oxStore] fetch 실패: ${res.status} ${subjectInfo.file}`)
       const all = await res.json()
 
-      // subSubject 필터 (현재 JSON에 sub_subject 필드 없음 — STEP 데이터 확장 후 활성화)
-      const questions = subSubject === 'ALL' ? all : all
+      // subSubject 필터: ox_id 마지막 토큰으로 세부과목 추출 (JSON 스키마 변경 불필요)
+      // ex) "OX-23-법령-16-A-상법" → split('-').slice(-1)[0] === "상법"
+      const questions = subSubject === 'ALL'
+        ? all
+        : all.filter((q) => q.ox_id.split('-').slice(-1)[0] === subSubject)
 
       set({
         subject:       subjectKey,

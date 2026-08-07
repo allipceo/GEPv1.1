@@ -435,12 +435,17 @@ export default function ChallengeMode() {
           </p>
         )}
 
-        {/* 문제 원문 */}
+        {/* 문제 원문 — \n 기준 분리, 각 줄 독립 블록, 화면폭 자연 줄바꿈 */}
         {current.questionRaw ? (
-          <p className="text-sm text-gray-900 leading-relaxed"
-            style={{ whiteSpace: 'pre-wrap' }}>
-            {current.questionRaw}
-          </p>
+          <div className="text-sm text-gray-900 leading-relaxed">
+            {current.questionRaw.split('\n').map((line, i) =>
+              line.trim() === '' ? (
+                <div key={i} className="h-2" />
+              ) : (
+                <p key={i} className="mb-0.5">{line}</p>
+              )
+            )}
+          </div>
         ) : (
           <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-6 text-center">
             <p className="text-sm text-gray-400">
