@@ -11,6 +11,7 @@
 
 import { create } from 'zustand'
 import { loadStats, saveStats, clearStats, todayKey } from '../utils/statsStorage.js'
+import { supabase } from '../lib/supabase'
 
 const useStatsStore = create((set, get) => ({
   // 상태: statsStorage 스키마와 동일 구조 (앱 시작 시 localStorage 복원)
@@ -86,6 +87,87 @@ const useStatsStore = create((set, get) => ({
   /** 오늘 날짜 통계 반환 (미존재 시 { solved: 0, correct: 0 }) */
   getTodayStats: () => {
     return get().stats.daily[todayKey()] ?? { solved: 0, correct: 0 }
+  },
+
+  /**
+   * Supabase DB의 attempts 테이블에서 통계를 집계하여 localStorage와 병합.
+   * 로그인 시 호출 → localStorage가 초기화되어도 DB 기록으로 복원 가능.
+   * 병합 기준: 각 항목에서 DB값과 localStorage값 중 더 큰 값 사용.
+   * daily 통계는 타임스탬프 없으므로 복원 제외 (오늘 이후 풀이만 기록).
+   */
+  syncFromDB: async (userId) => {
+    if (!userId) return
+
+    try {
+      const { data, error } = await supabase
+        .from('attempts')
+        .select('sub_subject, is_correct, question_round')
+        .eq('user_id', userId)
+
+      if (error) {
+        console.warn('[GEP] syncFromDB query failed:', error.message)
+        return
+      }
+      if (!data || data.length === 0) return
+
+      // DB 데이터 집계
+      const dbBySubject = {}
+      const dbByRound = {}
+      let dbTotalSolved = 0
+      let dbTotalCorrect = 0
+
+      data.forEach(({ sub_subject, is_correct, question_round }) => {
+        if (sub_subject) {
+          dbBySubject[sub_subject] = dbBySubject[sub_subject] ?? { solved: 0, correct: 0 }
+          dbBySubject[sub_subject].solved += 1
+          if (is_correct) dbBySubject[sub_subject].correct += 1
+        }
+        if (question_round) {
+          dbByRound[question_round] = dbByRound[question_round] ?? { solved: 0, correct: 0 }
+          dbByRound[question_round].solved += 1
+          if (is_correct) dbByRound[question_round].correct += 1
+        }
+        dbTotalSolved += 1
+        if (is_correct) dbTotalCorrect += 1
+      })
+
+      // localStorage 현재값과 병합 (더 큰 값 우선 — DB가 항상 최신 원장)
+      const prev = get().stats
+
+      const mergedBySubject = { ...prev.bySubject }
+      Object.entries(dbBySubject).forEach(([key, dbVal]) => {
+        const prevVal = mergedBySubject[key] ?? { solved: 0, correct: 0 }
+        mergedBySubject[key] = {
+          solved:  Math.max(prevVal.solved,  dbVal.solved),
+          correct: Math.max(prevVal.correct, dbVal.correct),
+        }
+      })
+
+      const mergedByRound = { ...prev.byRound }
+      Object.entries(dbByRound).forEach(([key, dbVal]) => {
+        const prevVal = mergedByRound[key] ?? { solved: 0, correct: 0 }
+        mergedByRound[key] = {
+          solved:  Math.max(prevVal.solved,  dbVal.solved),
+          correct: Math.max(prevVal.correct, dbVal.correct),
+        }
+      })
+
+      const newStats = {
+        ...prev,
+        total: {
+          solved:  Math.max(prev.total.solved,  dbTotalSolved),
+          correct: Math.max(prev.total.correct, dbTotalCorrect),
+        },
+        bySubject: mergedBySubject,
+        byRound:   mergedByRound,
+      }
+
+      set({ stats: newStats })
+      saveStats(newStats, userId)
+      console.log('[GEP] syncFromDB 완료 — DB 풀이수:', dbTotalSolved)
+    } catch (err) {
+      console.warn('[GEP] syncFromDB 예외:', err.message)
+    }
   },
 }))
 

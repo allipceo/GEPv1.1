@@ -64,6 +64,7 @@ gep:v1:examStore:{userId}     → examStore
 | GEPv30-078 | examStore userId 분리 버그 수정 |
 | GEPv30-079 | 로그아웃 버그 수정 (scope:global + clearAuth 선행) |
 | GEPv30-080 | Chrome 재시작 후 로그인 불가 버그 수정 (SW navigate 캐시 제외, vercel.json 헤더 추가) |
+| GEPv30-081 | 로그인 시 DB→localStorage 통계 복원 (syncFromDB) — localStorage 초기화 후에도 풀이 기록 유지 |
 
 ---
 

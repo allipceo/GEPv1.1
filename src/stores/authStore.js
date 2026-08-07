@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { supabase } from '../lib/supabase'
 import { FEATURE_FLAGS } from '../config/featureFlags'
+import useStatsStore from './statsStore'
 
 const PILOT_ADMIN_EMAILS = ['choeunsang@gmail.com']
 
@@ -176,6 +177,10 @@ export const useAuthStore = create(
               }
 
               get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, user.id, profile)
+
+              // DB에서 통계 복원 — localStorage 초기화 후 재로그인 시에도 풀이 기록 유지
+              useStatsStore.getState().syncFromDB(user.id).catch(() => {})
+
             } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
               get().clearAuth()
             }
