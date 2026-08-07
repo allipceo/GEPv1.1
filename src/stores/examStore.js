@@ -4,8 +4,13 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from './authStore'
 import { canCountAttempts } from '../services/countingEligibility'
 
-const STORAGE_KEY = 'gep:v1:examStore'
+const STORAGE_KEY_BASE = 'gep:v1:examStore'
 const ALL_ROUNDS = '전체'
+
+/** userId별 localStorage 키 생성 — statsStorage와 동일한 패턴 */
+function getStorageKey(userId = null) {
+  return userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE
+}
 
 function makeProgressKey(round, subject, subSubject = null) {
   return subSubject ? `${round}_${subject}_${subSubject}` : `${round}_${subject}`
@@ -84,13 +89,13 @@ function saveToStorage(state) {
       questionOrder: state.questionOrder,
       progressMap: state.progressMap,
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    localStorage.setItem(getStorageKey(state._examUserId ?? null), JSON.stringify(payload))
   } catch (_) {}
 }
 
-function clearStorage() {
+function clearStorage(userId = null) {
   try {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(getStorageKey(userId))
   } catch (_) {}
 }
 
@@ -108,12 +113,57 @@ const useExamStore = create((set, get) => ({
   isReady: false,
   error: null,
   _examsMeta: null,
+  _examUserId: null,
+
+  /**
+   * 로그인/로그아웃 시 userId 변경 → userId별 localStorage에서 progressMap 재로드.
+   * questions는 유지 (재로드 불필요).
+   */
+  bindExamUser: (userId = null) => {
+    const state = get()
+    if (state._examUserId === userId) return
+
+    const key = getStorageKey(userId)
+    let restored = {
+      answers: {},
+      currentIndex: 0,
+      selectedSubject: '법령',
+      selectedRound: 23,
+      selectedSubSubject: null,
+      studyMode: 'service_b_subject_random',
+      questionOrder: [],
+      progressMap: {},
+    }
+
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        const meta = state._examsMeta
+        if (!meta || (saved.meta?.version === meta.version && saved.meta?.totalCount === meta.totalCount)) {
+          restored = {
+            answers: saved.answers ?? {},
+            currentIndex: saved.currentIndex ?? 0,
+            selectedSubject: saved.selectedSubject ?? '법령',
+            selectedRound: saved.selectedRound ?? 23,
+            selectedSubSubject: saved.selectedSubSubject ?? null,
+            studyMode: saved.studyMode ?? 'service_b_subject_random',
+            questionOrder: saved.questionOrder ?? [],
+            progressMap: saved.progressMap ?? {},
+          }
+        }
+      }
+    } catch (_) {}
+
+    set({ _examUserId: userId, ...restored })
+  },
 
   loadQuestions: async () => {
     set({ isLoading: true, error: null })
     try {
       const exams = await loadExams()
       const { version, totalCount, questions } = exams
+      const userId = get()._examUserId ?? null
 
       let restored = {
         answers: {},
@@ -127,7 +177,7 @@ const useExamStore = create((set, get) => ({
       }
 
       try {
-        const raw = localStorage.getItem(STORAGE_KEY)
+        const raw = localStorage.getItem(getStorageKey(userId))
         if (raw) {
           const saved = JSON.parse(raw)
           if (saved.meta?.version === version && saved.meta?.totalCount === totalCount) {

@@ -51,6 +51,7 @@ export default function App() {
 
   useEffect(() => {
     useStatsStore.getState().bindUser(userId ?? null)
+    useExamStore.getState().bindExamUser(userId ?? null)
   }, [userId])
 
   return (
