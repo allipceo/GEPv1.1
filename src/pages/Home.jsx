@@ -74,11 +74,18 @@ export default function Home() {
   const maxSolved = Math.max(...last7Days.map((d) => d.solved), 1)
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.warn('[GEP] 로그아웃 실패:', error.message)
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.warn('[GEP] signOut exception:', e)
     }
-    useAuthStore.getState().clearAuth()
+    // signOut 성공/실패 무관하게 모든 인증 관련 localStorage 키 강제 삭제
+    // → 페이지 리로드 후 initAuthListener의 INITIAL_SESSION이 session=null로 동작
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-') || k === 'gep_auth_v1')
+        .forEach(k => localStorage.removeItem(k))
+    } catch {}
     window.location.href = '/'
   }
 
