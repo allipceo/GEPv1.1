@@ -70,14 +70,17 @@ export default function LoginButton() {
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
           비밀번호
-          <span className="text-xs font-normal text-gray-500">(010을 생략하고 뒷번호 8자리만 입력하세요)</span>
-          <input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-            placeholder="••••••••"
-          />
+          <div className="flex items-center gap-1">
+            <span className="min-h-[44px] flex items-center px-3 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-500 whitespace-nowrap">010-</span>
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              maxLength={8}
+              className="min-h-[44px] flex-1 rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+              placeholder="뒷번호 8자리"
+            />
+          </div>
         </label>
         {errorMsg && <p className="text-sm font-semibold text-red-600">{errorMsg}</p>}
         <button
