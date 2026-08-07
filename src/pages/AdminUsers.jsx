@@ -112,7 +112,7 @@ export default function AdminUsers() {
       .from('users')
       .update({
         real_name: editRealName.trim(),
-        phone_number: '010' + editPhone,
+        phone_number: editPhone,
       })
       .eq('user_id', targetUserId)
 
@@ -158,7 +158,7 @@ export default function AdminUsers() {
           body: JSON.stringify({
             employeeId: newEmployeeId.trim(),
             realName: newRealName.trim(),
-            phone: '010' + newPhone,
+            phone: newPhone,
           }),
         }
       )
