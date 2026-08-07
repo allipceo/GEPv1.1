@@ -33,7 +33,8 @@
 ```javascript
 useAuthStore.getState().clearAuth()
 await supabase.auth.signOut({ scope: 'global' })  // scope 생략 금지
-Object.keys(localStorage).filter(k => k.startsWith('sb-') || k.startsWith('gep')).forEach(k => localStorage.removeItem(k))
+Object.keys(localStorage).filter(k => k.startsWith('sb-') || k === 'gep_auth_v1').forEach(k => localStorage.removeItem(k))
+// ⚠️ gep_stats_v1:* 와 gep:v1:examStore:* 는 절대 삭제 금지 — 사용자 풀이·통계 데이터
 window.location.href = '/'
 ```
 

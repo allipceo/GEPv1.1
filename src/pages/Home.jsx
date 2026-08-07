@@ -108,13 +108,11 @@ export default function Home() {
       console.warn('[GEP] signOut exception:', e)
     }
 
-    // Step 3: 모든 GEP / Supabase localStorage 키 강제 삭제
-    // (persist 미들웨어 재기록 포함)
+    // Step 3: 인증 관련 키만 삭제 — 통계·진도 데이터(gep_stats_v1:*, gep:v1:examStore:*)는 절대 삭제 금지
     try {
-      const keysToDelete = Object.keys(localStorage).filter(
-        k => k.startsWith('sb-') || k.startsWith('gep') || k.startsWith('gep:')
-      )
-      keysToDelete.forEach(k => localStorage.removeItem(k))
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-') || k === 'gep_auth_v1')
+        .forEach(k => localStorage.removeItem(k))
     } catch {}
 
     window.location.href = '/'

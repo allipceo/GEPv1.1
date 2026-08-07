@@ -400,8 +400,8 @@ const handleLogout = async () => {
   try { await supabase.auth.signOut({ scope: 'global' }) }  // 2. 서버 세션 삭제 (scope 필수)
   catch (e) {}
   Object.keys(localStorage)
-    .filter(k => k.startsWith('sb-') || k.startsWith('gep'))
-    .forEach(k => localStorage.removeItem(k))               // 3. 모든 관련 키 삭제
+    .filter(k => k.startsWith('sb-') || k === 'gep_auth_v1')
+    .forEach(k => localStorage.removeItem(k))               // 3. 인증 키만 삭제 (통계·진도 데이터 삭제 금지!)
   window.location.href = '/'
 }
 ```
