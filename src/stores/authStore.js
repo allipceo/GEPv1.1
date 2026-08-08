@@ -185,9 +185,7 @@ export const useAuthStore = create(
               const currentDevice = window.innerWidth < 768 ? 'mobile' : 'desktop'
               set({ prevDevice: profileData?.last_device ?? null })  // 이전 기기를 state에 보관
               supabase
-                .from('users')
-                .update({ last_device: currentDevice, last_access_at: new Date().toISOString() })
-                .eq('user_id', user.id)
+                .rpc('update_last_device', { p_device: currentDevice })
                 .then(({ error: devErr }) => {
                   if (devErr) console.warn('[GEP] last_device update failed:', devErr.message)
                 })
