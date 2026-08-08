@@ -52,10 +52,11 @@ export default function Home() {
     if (authStatus !== 'authenticated' || !userId) return
     supabase
       .from('attempts')
-      .select('id', { count: 'exact', head: true })
+      .select('attempt_id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('study_mode', 'ox')
-      .then(({ count }) => {
+      .then(({ count, error }) => {
+        if (error) { console.warn('[GEP] oxTotal 조회 실패:', error.message); return }
         if (count != null) setOxTotal(count)
       })
   }, [authStatus, userId, location.key])

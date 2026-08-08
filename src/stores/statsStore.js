@@ -103,6 +103,7 @@ const useStatsStore = create((set, get) => ({
         .from('attempts')
         .select('sub_subject, is_correct, question_round')
         .eq('user_id', userId)
+        .neq('study_mode', 'ox')  // OX 풀이는 별도 카운터(oxTotal) — 선택형 통계에서 제외
 
       if (error) {
         console.warn('[GEP] syncFromDB query failed:', error.message)
