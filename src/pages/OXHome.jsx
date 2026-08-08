@@ -84,7 +84,7 @@ export default function OXHome() {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
-      {/* 상단: ← 홈 버튼 + 타이틀 */}
+      {/* 상단: ← 홈 버튼 + 타이틀 + 통계 버튼 */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/')}
@@ -95,7 +95,14 @@ export default function OXHome() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-gray-900">OX 진위형 학습</h1>
+        <h1 className="text-lg font-bold text-gray-900 flex-1">OX 진위형 학습</h1>
+        <button
+          onClick={() => navigate('/ox/stats')}
+          className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
+          aria-label="OX 통계 보기"
+        >
+          📊 통계
+        </button>
       </div>
 
       {/* 과목 카드 3개 */}

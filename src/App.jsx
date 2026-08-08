@@ -18,6 +18,7 @@ import OXHome from './pages/OXHome'
 import OXSubject from './pages/OXSubject'
 import OXQuiz from './pages/OXQuiz'
 import OXReview from './pages/OXReview'
+import OXStats from './pages/OXStats'
 import MockExamHome from './pages/MockExamHome'
 import MockExamQuiz from './pages/MockExamQuiz'
 import MockExamResult from './pages/MockExamResult'
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/result" element={protectedPage(<Result />)} />
         <Route path="/wrong-review" element={protectedPage(<WrongReview />)} />
         <Route path="/ox" element={protectedPage(<OXHome />)} />
+        <Route path="/ox/stats" element={protectedPage(<OXStats />)} />
         <Route path="/ox/:subjectKey" element={protectedPage(<OXSubject />)} />
         <Route path="/ox/:subjectKey/:subSubject" element={protectedPage(<OXQuiz />)} />
         <Route path="/ox/:subjectKey/:subSubject/review" element={protectedPage(<OXReview />)} />
