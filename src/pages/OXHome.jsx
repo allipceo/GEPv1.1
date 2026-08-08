@@ -7,8 +7,10 @@
  * 과목 카드 3개: oxSubjects.js config 기준 (하드코딩 금지)
  */
 
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { supabase } from '../lib/supabase'
 import useOxStore from '../stores/oxStore'
 import { OX_SUBJECTS } from '../config/oxSubjects'
 import { FEATURE_FLAGS } from '../config/featureFlags'
@@ -42,11 +44,38 @@ export default function OXHome() {
   const navigate = useNavigate()
 
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
+  const userId     = useAuthStore((s) => s.userId)
+  const authStatus = useAuthStore((s) => s.authStatus)
 
   // oxStore — 현재 로드된 과목의 진행 정보
   const oxSubject        = useOxStore((s) => s.subject)
   const oxRoundNo        = useOxStore((s) => s.roundNo)
   const oxTotalCumulative = useOxStore((s) => s.totalCumulative)
+
+  const [oxDash, setOxDash] = useState(null)  // null = 로딩중
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !userId) return
+    supabase
+      .from('attempts')
+      .select('subject, is_correct')
+      .eq('user_id', userId)
+      .eq('study_mode', 'ox')
+      .then(({ data }) => {
+        if (!data || data.length === 0) { setOxDash({ total: 0, correct: 0, bySubj: {} }); return }
+        let total = 0, correct = 0
+        const bySubj = { law: { solved: 0, correct: 0 }, p1: { solved: 0, correct: 0 }, p2: { solved: 0, correct: 0 } }
+        data.forEach(({ subject, is_correct }) => {
+          total++
+          if (is_correct) correct++
+          if (bySubj[subject]) {
+            bySubj[subject].solved++
+            if (is_correct) bySubj[subject].correct++
+          }
+        })
+        setOxDash({ total, correct, bySubj })
+      })
+  }, [authStatus, userId])
 
   // ── 레벨 게이트 (featureFlags.OX_MIN_LEVEL 기준) ─────────────────────────────
   if (serviceLevel < FEATURE_FLAGS.OX_MIN_LEVEL) {
@@ -104,6 +133,38 @@ export default function OXHome() {
           📊 통계
         </button>
       </div>
+
+      {/* OX 학습 현황 미니 대시보드 */}
+      {oxDash && oxDash.total > 0 && (
+        <div className="rounded-2xl bg-white border border-gray-100 px-4 py-3 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-500">OX 학습 현황</p>
+            <span className="text-xs text-gray-400">
+              총 {oxDash.total.toLocaleString()}문항 ·{' '}
+              {oxDash.total > 0 ? Math.round((oxDash.correct / oxDash.total) * 100) : 0}% 정답
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { key: 'law', label: '법령',    barCls: 'bg-blue-400'  },
+              { key: 'p1',  label: '손보1부', barCls: 'bg-green-400' },
+              { key: 'p2',  label: '손보2부', barCls: 'bg-purple-400'},
+            ].map(({ key, label, barCls }) => {
+              const s   = oxDash.bySubj[key]
+              const pct = s.solved > 0 ? Math.round((s.correct / s.solved) * 100) : 0
+              return (
+                <div key={key} className="flex flex-col gap-1">
+                  <p className="text-xs text-gray-400">{label}</p>
+                  <p className="text-sm font-bold text-gray-800">{s.solved.toLocaleString()}<span className="text-xs font-normal text-gray-400">문항</span></p>
+                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-1 ${barCls} rounded-full`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 과목 카드 3개 */}
       <div className="flex flex-col gap-3">

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import useStatsStore from '../stores/statsStore'
 import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
@@ -34,6 +34,7 @@ function calcDday() {
 
 export default function Home() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const stats = useStatsStore((s) => s.stats)
   const authStatus = useAuthStore((s) => s.authStatus)
@@ -57,7 +58,13 @@ export default function Home() {
       .then(({ count }) => {
         if (count != null) setOxTotal(count)
       })
-  }, [authStatus, userId])
+  }, [authStatus, userId, location.key])
+
+  // MCQ 통계 최신화 — 홈 재방문 시마다 DB에서 재동기화
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !userId) return
+    useStatsStore.getState().syncFromDB(userId)
+  }, [authStatus, userId, location.key])
 
   if (authStatus === 'guest') {
     return (
