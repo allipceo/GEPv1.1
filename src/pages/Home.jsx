@@ -45,6 +45,8 @@ export default function Home() {
   const status = useAuthStore((s) => s.status)
   const isPaused = useAuthStore((s) => s.isPaused)
   const isAdmin = useAuthStore((s) => s.isAdmin)
+  const prevDevice = useAuthStore((s) => s.prevDevice)
+  const dismissDeviceBanner = useAuthStore((s) => s.dismissDeviceBanner)
 
   const [oxTotal, setOxTotal] = useState(0)
 
@@ -86,6 +88,10 @@ export default function Home() {
   })
 
   const dDay = calcDday()
+
+  // S4: 기기 전환 감지 배너 표시 여부
+  const currentDevice = window.innerWidth < 768 ? 'mobile' : 'desktop'
+  const showDeviceBanner = prevDevice !== null && prevDevice !== currentDevice
 
   // 세부과목 합산으로 주요과목 정답률 계산
   // (bySubject는 세부과목 키로 저장되므로 SUBJECTS_MAP으로 집계)
@@ -151,6 +157,30 @@ export default function Home() {
 
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-4">
+
+      {/* S4: 기기 전환 감지 배너 */}
+      {showDeviceBanner && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 flex items-start gap-2">
+          <span className="text-base mt-0.5 flex-shrink-0">
+            {prevDevice === 'mobile' ? '📱' : '💻'}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800">
+              {prevDevice === 'mobile' ? '모바일' : 'PC'}에서 학습 중이었습니다
+            </p>
+            <p className="text-xs text-amber-600">
+              이어서 학습하려면 {prevDevice === 'mobile' ? '모바일' : 'PC'}에서 접속하세요
+            </p>
+          </div>
+          <button
+            onClick={dismissDeviceBanner}
+            className="text-amber-400 hover:text-amber-600 text-sm font-bold flex-shrink-0 mt-0.5 leading-none"
+            aria-label="배너 닫기"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 섹터1: 헤더 */}
       <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow">

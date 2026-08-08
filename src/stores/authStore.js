@@ -30,6 +30,7 @@ const defaultProfile = {
   isPaused: false,
   approvalMemo: null,
   isAdmin: false,
+  prevDevice: null,  // S4: 이전 접속 기기 (배너 표시용, 로그인 시 갱신)
 }
 
 export const useAuthStore = create(
@@ -92,6 +93,8 @@ export const useAuthStore = create(
         return profile
       },
 
+      dismissDeviceBanner: () => set({ prevDevice: null }),
+
       submitApprovalRequest: async ({ realName, phoneNumber, memo = '' }) => {
         const { userId } = get()
         if (!userId) return { success: false, error: '로그인이 필요합니다.' }
@@ -133,7 +136,7 @@ export const useAuthStore = create(
 
               const { data, error } = await supabase
                 .from('users')
-                .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at')
+                .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at,last_device')
                 .eq('user_id', user.id)
                 .single()
 
@@ -178,6 +181,17 @@ export const useAuthStore = create(
 
               get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, user.id, profile)
 
+              // S4: 접속 채널 감지 및 DB 기록 (fire-and-forget)
+              const currentDevice = window.innerWidth < 768 ? 'mobile' : 'desktop'
+              set({ prevDevice: profileData?.last_device ?? null })  // 이전 기기를 state에 보관
+              supabase
+                .from('users')
+                .update({ last_device: currentDevice, last_access_at: new Date().toISOString() })
+                .eq('user_id', user.id)
+                .then(({ error: devErr }) => {
+                  if (devErr) console.warn('[GEP] last_device update failed:', devErr.message)
+                })
+
               // DB에서 통계 복원 — localStorage 초기화 후 재로그인 시에도 풀이 기록 유지
               useStatsStore.getState().syncFromDB(user.id).catch(() => {})
 
@@ -190,6 +204,9 @@ export const useAuthStore = create(
         return subscription
       },
     }),
-    { name: 'gep_auth_v1' }
+    {
+      name: 'gep_auth_v1',
+      partialize: ({ prevDevice, ...rest }) => rest,  // prevDevice는 메모리에만 유지 (로그인 시마다 재계산)
+    }
   )
 )
