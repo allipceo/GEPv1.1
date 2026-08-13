@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 const EMPLOYEE_EMAIL_DOMAIN = '@gep.local'
+const LOGIN_TIMEOUT_MS = 10000
 
 export default function LoginButton() {
   const [employeeId, setEmployeeId] = useState('')
@@ -44,14 +45,33 @@ export default function LoginButton() {
     }
 
     setIsSubmitting(true)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: `${normalizedId}${EMPLOYEE_EMAIL_DOMAIN}`,
-      password,
-    })
-    setIsSubmitting(false)
 
-    if (error) {
-      setErrorMsg('사번 또는 비밀번호가 올바르지 않습니다.')
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => resolve({ timedOut: true }), LOGIN_TIMEOUT_MS)
+    })
+
+    try {
+      const result = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: `${normalizedId}${EMPLOYEE_EMAIL_DOMAIN}`,
+          password,
+        }),
+        timeoutPromise,
+      ])
+
+      if (result.timedOut) {
+        setErrorMsg('로그인 응답이 지연되고 있습니다. 새로고침 후 다시 시도해 주세요.')
+        return
+      }
+
+      if (result.error) {
+        setErrorMsg('사번 또는 비밀번호가 올바르지 않습니다.')
+      }
+    } catch (e) {
+      console.warn('[GEP] signInWithPassword exception:', e)
+      setErrorMsg('로그인 중 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 

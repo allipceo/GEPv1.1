@@ -123,81 +123,91 @@ export const useAuthStore = create(
       },
 
       initAuthListener: () => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            const isAuthEvent =
-              event === 'SIGNED_IN' ||
-              event === 'INITIAL_SESSION' ||
-              event === 'TOKEN_REFRESHED'
+        // onAuthStateChange 콜백은 GoTrueClient 내부 exclusive lock이 걸린 채로 호출된다.
+        // 콜백 안에서 곧바로 supabase.from()/rpc()를 호출하면, 그 내부에서 실행되는
+        // getSession()이 같은 lock을 재요청하며 자기 자신과 데드락에 빠진다
+        // (GEPv30-092: 로그아웃 후 재로그인 시 navigator.locks.query()로 실제 재현·확인).
+        // → 콜백 본문 실행을 다음 태스크로 미뤄 lock이 반납된 뒤 실행되도록 한다.
+        const handleAuthChange = async (event, session) => {
+          const isAuthEvent =
+            event === 'SIGNED_IN' ||
+            event === 'INITIAL_SESSION' ||
+            event === 'TOKEN_REFRESHED'
 
-            if (isAuthEvent && session?.user) {
-              const user = session.user
-              const email = user.email ?? null
+          if (isAuthEvent && session?.user) {
+            const user = session.user
+            const email = user.email ?? null
 
-              const { data, error } = await supabase
+            const { data, error } = await supabase
+              .from('users')
+              .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at,last_device')
+              .eq('user_id', user.id)
+              .single()
+
+            let profileData = data
+            let serviceLevel = 1
+
+            if (error || !data) {
+              const { error: insertErr } = await supabase
                 .from('users')
-                .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at,last_device')
-                .eq('user_id', user.id)
-                .single()
-
-              let profileData = data
-              let serviceLevel = 1
-
-              if (error || !data) {
-                const { error: insertErr } = await supabase
-                  .from('users')
-                  .insert({
-                    user_id: user.id,
-                    service_level: 1,
-                    status: 'active',
-                    approval_status: 'pending',
-                    approval_requested_at: new Date().toISOString(),
-                  })
-
-                if (insertErr) {
-                  console.warn('[GEP] users insert failed:', insertErr.message)
-                }
-
-                profileData = {
+                .insert({
+                  user_id: user.id,
                   service_level: 1,
                   status: 'active',
                   approval_status: 'pending',
-                  is_paused: false,
-                }
-              } else {
-                serviceLevel = data.service_level ?? 1
-              }
-
-              const profile = {
-                approvalStatus: profileData?.approval_status ?? 'pending',
-                realName: profileData?.real_name ?? null,
-                phoneNumber: profileData?.phone_number ?? null,
-                resetBaselineAt: profileData?.reset_baseline_at ?? null,
-                status: profileData?.status ?? 'active',
-                isPaused: profileData?.is_paused ?? false,
-                approvalMemo: profileData?.approval_memo ?? null,
-                isAdmin: ADMIN_EMAILS.includes((email ?? '').toLowerCase()),
-              }
-
-              get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, user.id, profile)
-
-              // S4: 접속 채널 감지 및 DB 기록 (fire-and-forget)
-              const currentDevice = window.innerWidth < 768 ? 'mobile' : 'desktop'
-              set({ prevDevice: profileData?.last_device ?? null })  // 이전 기기를 state에 보관
-              supabase
-                .rpc('update_last_device', { p_device: currentDevice })
-                .then(({ error: devErr }) => {
-                  if (devErr) console.warn('[GEP] last_device update failed:', devErr.message)
+                  approval_requested_at: new Date().toISOString(),
                 })
 
-              // DB에서 통계 복원 — localStorage 초기화 후 재로그인 시에도 풀이 기록 유지
-              useStatsStore.getState().syncFromDB(user.id).catch(() => {})
+              if (insertErr) {
+                console.warn('[GEP] users insert failed:', insertErr.message)
+              }
 
-            } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
-              get().clearAuth()
+              profileData = {
+                service_level: 1,
+                status: 'active',
+                approval_status: 'pending',
+                is_paused: false,
+              }
+            } else {
+              serviceLevel = data.service_level ?? 1
             }
+
+            const profile = {
+              approvalStatus: profileData?.approval_status ?? 'pending',
+              realName: profileData?.real_name ?? null,
+              phoneNumber: profileData?.phone_number ?? null,
+              resetBaselineAt: profileData?.reset_baseline_at ?? null,
+              status: profileData?.status ?? 'active',
+              isPaused: profileData?.is_paused ?? false,
+              approvalMemo: profileData?.approval_memo ?? null,
+              isAdmin: ADMIN_EMAILS.includes((email ?? '').toLowerCase()),
+            }
+
+            get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, user.id, profile)
+
+            // S4: 접속 채널 감지 및 DB 기록 (fire-and-forget)
+            const currentDevice = window.innerWidth < 768 ? 'mobile' : 'desktop'
+            set({ prevDevice: profileData?.last_device ?? null })  // 이전 기기를 state에 보관
+            supabase
+              .rpc('update_last_device', { p_device: currentDevice })
+              .then(({ error: devErr }) => {
+                if (devErr) console.warn('[GEP] last_device update failed:', devErr.message)
+              })
+
+            // DB에서 통계 복원 — localStorage 초기화 후 재로그인 시에도 풀이 기록 유지
+            useStatsStore.getState().syncFromDB(user.id).catch(() => {})
+          } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session)) {
+            get().clearAuth()
           }
-        )
+        }
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          // 콜백 자체는 lock이 걸린 상태에서 즉시 호출되지만, 실제 처리(handleAuthChange)는
+          // setTimeout으로 다음 태스크로 미뤄 lock 반납 이후 실행되도록 한다.
+          setTimeout(() => {
+            handleAuthChange(event, session)
+          }, 0)
+        })
 
         return subscription
       },

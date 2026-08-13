@@ -41,6 +41,7 @@ function protectedPage(element, options = {}) {
 
 export default function App() {
   const loadQuestions    = useExamStore((s) => s.loadQuestions)
+  const isReady          = useExamStore((s) => s.isReady)
   const initAuthListener = useAuthStore((s) => s.initAuthListener)
   const userId           = useAuthStore((s) => s.userId)
 
@@ -53,7 +54,14 @@ export default function App() {
   useEffect(() => {
     useStatsStore.getState().bindUser(userId ?? null)
     useExamStore.getState().bindExamUser(userId ?? null)
-  }, [userId])
+
+    // isReady(=loadQuestions 완료) 이후에만 DB 동기화 — loadQuestions()의 최종 set()이
+    // progressMap을 localStorage 기준으로 덮어쓰기 전에 DB 병합값이 먼저 적용되면
+    // 그 병합값이 유실되는 경합을 피하기 위함 (GEPv30-092)
+    if (isReady) {
+      useExamStore.getState().syncProgressFromDB(userId ?? null)
+    }
+  }, [userId, isReady])
 
   return (
     <BrowserRouter>

@@ -158,6 +158,40 @@ const useExamStore = create((set, get) => ({
     set({ _examUserId: userId, ...restored })
   },
 
+  /**
+   * 로그인 시 Supabase progress 테이블에서 회차별 진행 인덱스(filter_key → current_index)를 복원.
+   * localStorage 초기화(사이트 데이터 삭제, 기기 변경 등) 이후에도 서버 기준 진도로 복구되도록 함.
+   * 병합 기준: DB값과 로컬값 중 더 큰 값 사용 (statsStore.syncFromDB와 동일 정책).
+   */
+  syncProgressFromDB: async (userId) => {
+    if (!userId) return
+
+    try {
+      const { data, error } = await supabase
+        .from('progress')
+        .select('filter_key, current_index')
+        .eq('user_id', userId)
+
+      if (error) {
+        console.warn('[GEP] syncProgressFromDB query failed:', error.message)
+        return
+      }
+      if (!data || data.length === 0) return
+
+      const prev = get().progressMap
+      const merged = { ...prev }
+      data.forEach(({ filter_key, current_index }) => {
+        const prevVal = merged[filter_key] ?? 0
+        merged[filter_key] = Math.max(prevVal, current_index ?? 0)
+      })
+
+      set({ progressMap: merged })
+      saveToStorage(get())
+    } catch (err) {
+      console.warn('[GEP] syncProgressFromDB exception:', err.message)
+    }
+  },
+
   loadQuestions: async () => {
     set({ isLoading: true, error: null })
     try {

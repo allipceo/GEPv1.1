@@ -160,7 +160,10 @@ export default function Home() {
         .forEach(k => localStorage.removeItem(k))
     } catch {}
 
-    window.location.href = '/'
+    // Step 4: SPA 네비게이션 — 강제 풀 리로드(window.location.href)는 signOut() 직후
+    // Navigator LockManager 잠금 해제 타이밍과 겹쳐 재로그인 시도가 무한 대기(브라우저 먹통)에
+    // 빠지는 사례가 있어 제거함 (GEPv30-092). SIGNED_OUT은 이미 authStore가 처리함.
+    navigate('/', { replace: true })
   }
 
   return (
