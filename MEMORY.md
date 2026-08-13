@@ -10,7 +10,7 @@
 | 항목 | 내용 |
 |------|------|
 | 배포 URL | https://gepv11.vercel.app |
-| 최신 문서 번호 | GEPv30-088 (완료) — 다음은 GEPv30-089 |
+| 최신 문서 번호 | GEPv30-090 (완료) — 다음은 GEPv30-091 |
 | 브랜치 | main (Vercel 자동배포) |
 | 인증 방식 | 사번@gep.local + 8자리 전화번호 뒷자리 |
 | 로그인 UI | 010- 하드코딩, 8자리만 입력 |
@@ -28,8 +28,10 @@
 | 🟢 완료 | GEPv30-087 RLS 보안 강화 | Supabase RLS 정책 강화 |
 | 🟢 완료 | GEPv30-088 S4 채널 추적 | last_device/last_access_at DB 추가, 배너 UI, 커밋 05cfeb9 |
 | 🟢 완료 | 노션 Phase 2 허브 업데이트 | GEPv30-084~088 완료 내용 반영 [08081600] |
-| 🔴 다음 | S5 통합 레드팀 테스트 | 노션 계획 기준 다음 단계 (S4 모의고사는 Phase 5에서 완료) |
-| 🟡 검증필요 | GEPv30-088 V2~V6 | 실제 로그인으로 DB 기록·배너 표시 확인 (조대표님 직접) |
+| 🟢 완료 | GEPv30-089 last_device RPC 수정 | S5 레드팀 버그수정 — users RLS 우회, SECURITY DEFINER 함수, 커밋 5a1e568 |
+| 🟢 완료 | GEPv30-090 mock_exam_tables 적용 | S5 레드팀 중 발견 — Supabase MCP apply_migration으로 즉시 적용 |
+| 🟢 완료 | S5 레드팀 테스트 | 전 구간 통과, last_device 버그 수정(GEPv30-089), mock_exam_tables 적용(GEPv30-090) |
+| 🔵 진행 중 | S6 파일럿 릴리스 | 20~30명 직원 계정 등록, 전 기능 개방 |
 
 ## featureFlags 정책 결정 (2026-08-08 조대표님 확정)
 
