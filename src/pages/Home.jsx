@@ -383,6 +383,23 @@ export default function Home() {
         </button>
       </div>
 
+      {/* 학습 분석 대시보드 — GEPv30-093 신규 연결 */}
+      <div className="border-t border-gray-100 pt-2">
+        <p className="text-xs font-bold text-gray-400 px-1 mb-2">학습 분석</p>
+        <button
+          type="button"
+          onClick={() => navigate('/stats-dashboard')}
+          className="w-full flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3.5 text-left active:bg-indigo-100"
+        >
+          <span className="text-2xl">📊</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-indigo-800">내 학습 분석</p>
+            <p className="text-xs text-indigo-400 mt-0.5">취약점 · 반복오답 · 합격확률</p>
+          </div>
+          <span className="text-gray-300 text-lg">›</span>
+        </button>
+      </div>
+
     </div>
     </div>
   )

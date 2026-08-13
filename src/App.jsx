@@ -33,6 +33,7 @@ import ChallengeMode       from './pages/ChallengeMode'
 import ChallengeResult     from './pages/ChallengeResult'
 import ProgressTracker     from './pages/ProgressTracker'
 import AdminUsers          from './pages/AdminUsers'
+import StatsDashboard      from './pages/StatsDashboard'
 import RequireLogin        from './components/RequireLogin'
 
 function protectedPage(element, options = {}) {
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />)} />
         <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />)} />
         <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />)} />
+        <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />)} />
       </Routes>
     </BrowserRouter>
   )
