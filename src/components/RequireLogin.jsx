@@ -154,10 +154,11 @@ export default function RequireLogin({ children, requireApproval = true }) {
   const approvalStatus = useAuthStore((s) => s.approvalStatus)
   const status = useAuthStore((s) => s.status)
   const isPaused = useAuthStore((s) => s.isPaused)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   if (authStatus === 'guest') return <LoginRequiredDialog />
   if (!requireApproval) return children
-  if (approvalStatus === 'approved' && status === 'active' && !isPaused) return children
+  if (isAdmin || (approvalStatus === 'approved' && status === 'active' && !isPaused)) return children
 
   return <ApprovalRequiredDialog />
 }
