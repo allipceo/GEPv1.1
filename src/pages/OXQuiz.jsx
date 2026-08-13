@@ -176,7 +176,7 @@ export default function OXQuiz() {
 
         {/* statement_display — 원문 그대로 표시 (white-space: pre-wrap) */}
         <p
-          className="text-sm text-gray-900 leading-relaxed"
+          className="text-xl text-gray-900 leading-relaxed"
           style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
         >
           {currentQuestion.statement_display}

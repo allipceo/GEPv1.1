@@ -29,12 +29,12 @@ export default function QuestionView({ question, currentNum, totalNum }) {
       </p>
 
       {/* 문제+보기 — \n 기준 분리, 각 줄 독립 블록, 화면폭 자연 줄바꿈 */}
-      <div className="text-sm text-gray-900 leading-normal">
+      <div className="text-xl text-gray-900 leading-relaxed">
         {lines.map((line, i) =>
           line.trim() === '' ? (
             <div key={i} className="h-2" />
           ) : (
-            <p key={i} className="mb-0.5">
+            <p key={i} className="mb-1">
               {line}
             </p>
           )
