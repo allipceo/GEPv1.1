@@ -61,6 +61,7 @@ export default function StatsDashboard() {
 
   const [mcqAttempts, setMcqAttempts] = useState([])
   const [mockSessions, setMockSessions] = useState([])
+  const [customSessions, setCustomSessions] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -74,6 +75,7 @@ export default function StatsDashboard() {
       const [
         { data: attempts, error: attemptsError },
         { data: rawSessions, error: sessionsError },
+        { data: rawCustomSessions, error: customSessionsError },
       ] = await Promise.all([
         supabase
           .from('attempts')
@@ -82,18 +84,31 @@ export default function StatsDashboard() {
           .neq('study_mode', 'ox'),
         supabase
           .from('mock_exam_sessions')
-          .select('round, total_average, is_pass, attempt_number')
+          .select('round, total_average, is_pass, attempt_number, created_at')
           .eq('user_id', userId)
           .eq('is_complete', true)
           .order('round', { ascending: true })
           .order('attempt_number', { ascending: false }),
+        supabase
+          .from('custom_mock_sessions')
+          .select('id, total_average, is_pass, created_at')
+          .eq('user_id', userId)
+          .eq('is_complete', true)
+          .order('created_at', { ascending: true }),
       ])
 
       if (attemptsError) throw attemptsError
       if (sessionsError) throw sessionsError
 
+      // custom_mock_sessions은 부가 데이터 — 조회 실패(테이블 미존재 등)해도
+      // 나머지 대시보드(반복오답·취약도·정규 모의고사 통계)는 정상 표시되도록 격리
+      if (customSessionsError) {
+        console.warn('[GEP] custom_mock_sessions 조회 실패(무시):', customSessionsError.message)
+      }
+
       setMcqAttempts(attempts ?? [])
       setMockSessions(dedupeByRound(rawSessions))
+      setCustomSessions(rawCustomSessions ?? [])
     } catch (err) {
       console.warn('[GEP] StatsDashboard 로드 실패:', err.message)
       setError(err)
@@ -128,7 +143,18 @@ export default function StatsDashboard() {
   }
 
   const repeatWrong = calcRepeatWrong(mcqAttempts, questions)
-  const mockRecords = mockSessions.map((s) => ({ totalAverage: s.total_average ?? 0 }))
+
+  const customRecords = customSessions.map((s) => ({
+    totalAverage: Number(s.total_average ?? 0),
+    created_at: s.created_at,
+  }))
+  const regularRecords = mockSessions.map((s) => ({
+    totalAverage: Number(s.total_average ?? 0),
+    created_at: s.created_at,
+  }))
+  const allRecords = [...customRecords, ...regularRecords]
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
   const dDay = calcDday()
 
   return (
@@ -190,10 +216,10 @@ export default function StatsDashboard() {
       <StudyRoadmap questionAttempts={mcqAttempts} />
 
       {/* ⑤ PassProbabilityCard */}
-      <PassProbabilityCard records={mockRecords} />
+      <PassProbabilityCard records={allRecords} />
 
       {/* ⑥ PredictionCard */}
-      <PredictionCard records={mockRecords} />
+      <PredictionCard records={allRecords} />
 
     </div>
   )
