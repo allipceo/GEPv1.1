@@ -7,6 +7,8 @@ export default function ServiceAHome() {
   const questions = useExamStore((s) => s.questions)
   const startServiceA = useExamStore((s) => s.startServiceA)
   const progressMap = useExamStore((s) => s.progressMap)
+  const isLoading = useExamStore((s) => s.isLoading)
+  const isReady = useExamStore((s) => s.isReady)
 
   const rounds = useMemo(() => {
     const grouped = new Map()
@@ -28,6 +30,14 @@ export default function ServiceAHome() {
   const handleStart = (round) => {
     startServiceA(round)
     navigate('/question')
+  }
+
+  if (!isReady || isLoading) {
+    return (
+      <div className="min-h-screen max-w-[640px] mx-auto bg-gray-50 px-4 py-6 flex items-center justify-center">
+        <p className="text-gray-400 text-sm">회차 목록 불러오는 중…</p>
+      </div>
+    )
   }
 
   return (

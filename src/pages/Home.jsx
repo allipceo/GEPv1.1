@@ -48,7 +48,12 @@ export default function Home() {
   const prevDevice = useAuthStore((s) => s.prevDevice)
   const dismissDeviceBanner = useAuthStore((s) => s.dismissDeviceBanner)
 
-  const [oxTotal, setOxTotal] = useState(0)
+  const [oxTotal, setOxTotal] = useState(() => {
+    try {
+      const cached = localStorage.getItem(`gep_oxTotal:${useAuthStore.getState().userId}`)
+      return cached ? parseInt(cached, 10) : 0
+    } catch { return 0 }
+  })
 
   useEffect(() => {
     if (authStatus !== 'authenticated' || !userId) return
@@ -59,7 +64,10 @@ export default function Home() {
       .eq('study_mode', 'ox')
       .then(({ count, error }) => {
         if (error) { console.warn('[GEP] oxTotal 조회 실패:', error.message); return }
-        if (count != null) setOxTotal(count)
+        if (count != null) {
+          setOxTotal(count)
+          try { localStorage.setItem(`gep_oxTotal:${userId}`, count) } catch {}
+        }
       })
   }, [authStatus, userId, location.key])
 
