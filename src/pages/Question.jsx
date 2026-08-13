@@ -153,16 +153,16 @@ export default function Question() {
 
       <div className={`flex-shrink-0 flex justify-between items-center px-4 py-2 ${headerBg}`}>
         <button
-          className="text-sm text-white/80 hover:text-white"
+          className="text-base text-white/80 hover:text-white"
           onClick={() => navigate(studyMode === 'service_a_sequence' ? '/service-a' : '/')}
         >
           이전
         </button>
-        <span className="text-sm font-semibold text-white">
+        <span className="text-base font-semibold text-white">
           {headerLabel} {currentIndex + 1}/{filteredQuestions.length}
         </span>
         <button
-          className="text-sm text-white/80 hover:text-white"
+          className="text-base text-white/80 hover:text-white"
           onClick={() => navigate('/')}
         >
           홈
@@ -195,14 +195,14 @@ export default function Question() {
 
         <div className="flex gap-2 mt-1">
           <button
-            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm disabled:opacity-40"
+            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-lg disabled:opacity-40"
             onClick={handlePrev}
             disabled={currentIndex === 0}
           >
             이전
           </button>
           <button
-            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm"
+            className="flex-1 py-2 rounded-lg bg-gray-100 text-gray-700 text-lg"
             onClick={handleNext}
           >
             {currentIndex === filteredQuestions.length - 1 ? '완료' : '다음'}

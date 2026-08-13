@@ -147,11 +147,11 @@ export default function OXQuiz() {
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => navigate(`/ox/${subjectKey}`)}
-            className="text-white/80 hover:text-white text-sm"
+            className="text-white/80 hover:text-white text-base"
           >
             ← 과목선택
           </button>
-          <span className="text-xs text-white/90 font-medium">
+          <span className="text-sm text-white/90 font-medium">
             Round {roundNo}&nbsp;&nbsp;{answeredSet.size}/{currentQs.length}&nbsp;
             <span className="text-white/70">(누적 {totalCumulative})</span>
           </span>
@@ -224,13 +224,13 @@ export default function OXQuiz() {
           <button
             onClick={goPrev}
             disabled={currentIdx === 0}
-            className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-30 transition-opacity"
+            className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-lg font-medium disabled:opacity-30 transition-opacity"
           >
             이전
           </button>
           <button
             onClick={handleNext}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity ${headerBg}`}
+            className={`flex-1 py-2.5 rounded-xl text-lg font-semibold text-white transition-opacity ${headerBg}`}
           >
             {nextLabel}
           </button>

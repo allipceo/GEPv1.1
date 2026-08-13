@@ -15,7 +15,7 @@ export default function AnswerButton({ number, label, status = 'default', onClic
 
   return (
     <button
-      className={`flex-1 text-center px-2 py-2 rounded-lg text-lg font-medium transition-colors ${STATUS_STYLE[status]}`}
+      className={`flex-1 text-center px-2 py-3 rounded-lg text-2xl font-medium transition-colors ${STATUS_STYLE[status]}`}
       onClick={isClickable ? onClick : undefined}
       disabled={!isClickable}
       aria-label={`${number}번`}
