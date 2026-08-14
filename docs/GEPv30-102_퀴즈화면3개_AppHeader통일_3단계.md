@@ -52,9 +52,9 @@ GEPv30-098~101에 이어 시험 진행 중 화면(퀴즈) 3개의 상단 헤더�
 
 ## 6. 배포 결과
 
-- Commit: (커밋 후 기입)
-- URL: https://gepv11.vercel.app
-- 비고: GitHub push 후 Vercel 자동 배포
+- Commit: a156597
+- URL: https://gepv11.vercel.app (READY 확인)
+- 비고: GitHub push 후 Vercel 자동 배포 완료
 
 ## 7. 다음 작업
 
