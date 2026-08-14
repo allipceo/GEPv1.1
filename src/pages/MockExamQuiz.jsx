@@ -368,13 +368,12 @@ export default function MockExamQuiz() {
       <div className={`flex-shrink-0 ${partMeta.bg} px-4 pt-3 pb-2`}>
         <div className="flex items-center justify-between mb-2">
 
-          {/* 좌: 홈 나가기 */}
+          {/* 좌: 이전 (exit modal) */}
           <button
             onClick={() => setShowExitModal(true)}
-            className="text-white/80 hover:text-white text-sm flex items-center gap-1"
+            className="text-white/80 hover:text-white text-base min-w-[56px] text-left"
           >
-            🏠
-            <span className="text-xs">나가기</span>
+            ← 이전
           </button>
 
           {/* 중: 회차명 + 타이머 */}
@@ -406,6 +405,12 @@ export default function MockExamQuiz() {
               className="text-xs text-white/90 hover:text-white font-semibold min-w-[40px] text-right"
             >
               {currentIndex + 1}/{questions.length}
+            </button>
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="text-white/80 hover:text-white text-base min-w-[56px] text-right"
+            >
+              홈
             </button>
           </div>
         </div>
