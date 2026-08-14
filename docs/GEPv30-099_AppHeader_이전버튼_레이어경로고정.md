@@ -59,9 +59,9 @@ export default function AppHeader({ title, backTo = '/' }) {
 
 ## 6. 배포 결과
 
-- Commit: (커밋 후 기입)
-- URL: https://gepv11.vercel.app
-- 비고: GitHub push 후 Vercel 자동 배포
+- Commit: f9f8e30
+- URL: https://gepv11.vercel.app (READY 확인)
+- 비고: GitHub push 후 Vercel 자동 배포 완료
 
 ## 7. 다음 작업
 
