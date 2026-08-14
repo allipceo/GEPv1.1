@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useCustomMockStore } from '../stores/customMockStore'
+import AppHeader from '../components/AppHeader'
 import { FEATURE_FLAGS } from '../config/featureFlags'
 import { customMockConfig } from '../config/customMockConfig'
 import { analyzeWeakness, customMockSupabase } from '../services/customMockService'
@@ -28,15 +29,6 @@ function relativeDate(isoString) {
 }
 
 // ── 서브 컴포넌트 ─────────────────────────────────────────────────────────────
-
-function BackIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
-      viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-    </svg>
-  )
-}
 
 // 모드 선택 카드
 function ModeCard({ mode, selected, onSelect, disabled, weakSubjects, isLoading }) {
@@ -172,12 +164,7 @@ function SessionRow({ session, index }) {
 function LockScreen({ navigate }) {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-700 p-1 -ml-1">
-          <BackIcon />
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">맞춤 모의고사</h1>
-      </div>
+      <AppHeader title="맞춤 모의고사" />
       <div className="flex flex-col items-center gap-4 py-14 text-center">
         <span className="text-4xl">🔒</span>
         <p className="text-base font-semibold text-gray-700">레벨 5 전용 서비스입니다</p>
@@ -276,17 +263,8 @@ export default function CustomMockHome() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
 
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-            aria-label="홈으로"
-          >
-            <BackIcon />
-          </button>
-          <h1 className="text-lg font-bold text-gray-900">맞춤 모의고사</h1>
-        </div>
+      <AppHeader title="맞춤 모의고사" />
+      <div className="flex justify-end -mt-3">
         <button
           onClick={() => navigate('/custom-mock/stats')}
           className="text-sm text-indigo-500 font-semibold hover:text-indigo-700 transition-colors"

@@ -17,6 +17,7 @@ import { recordAttempt } from '../services/statsService'
 import { canCountAttempts } from '../services/countingEligibility'
 import QuestionView from '../components/QuestionView'
 import AnswerButtons from '../components/AnswerButtons'
+import AppHeader from '../components/AppHeader'
 
 const SUBJECT_HEADER_BG = {
   '법령':   'bg-blue-600',
@@ -191,16 +192,7 @@ export default function WrongReview() {
       <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
 
         {/* 헤더 */}
-        <div className="flex items-center justify-between">
-          <button
-            className="text-sm text-gray-500 hover:text-gray-700"
-            onClick={() => navigate('/')}
-          >
-            ← 홈
-          </button>
-          <h2 className="text-base font-bold text-gray-900">틀린문제 풀기</h2>
-          <span className="w-10" />
-        </div>
+        <AppHeader title="오답 복습" />
 
         {allWrongQuestions.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 px-6">

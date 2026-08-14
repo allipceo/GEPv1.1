@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
+import AppHeader from '../components/AppHeader'
 
 export default function ServiceAHome() {
   const navigate = useNavigate()
@@ -42,17 +43,7 @@ export default function ServiceAHome() {
 
   return (
     <div className="min-h-screen max-w-[640px] mx-auto bg-gray-50 px-4 py-6">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="min-h-[40px] px-2 text-sm font-semibold text-gray-500"
-        >
-          홈
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">기출 회차 순서풀이</h1>
-        <span className="w-10" />
-      </div>
+      <AppHeader title="기출 회차 순서풀이" />
 
       <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
         <p className="text-sm font-semibold text-blue-800">서비스 A</p>

@@ -13,6 +13,7 @@ import WeaknessHeatmap from '../components/stats/WeaknessHeatmap'
 import StudyRoadmap from '../components/stats/StudyRoadmap'
 import PassProbabilityCard from '../components/stats/PassProbabilityCard'
 import PredictionCard from '../components/stats/PredictionCard'
+import AppHeader from '../components/AppHeader'
 
 const EXAM_DATE = new Date('2026-11-15')
 
@@ -160,18 +161,9 @@ export default function StatsDashboard() {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
-      {/* ① 헤더: ← 홈 | 📊 내 학습 분석 | D-xx 🔴 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/')}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="홈으로"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">📊 내 학습 분석</h1>
+      {/* ① 헤더: 공용 헤더 | D-xx 🔴 */}
+      <AppHeader title="내 학습 분석" />
+      <div className="flex justify-end -mt-4">
         <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full whitespace-nowrap">
           {dDay >= 0 ? `D-${dDay}` : 'D-Day'} 🔴
         </span>

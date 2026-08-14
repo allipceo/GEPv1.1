@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import AppHeader from '../components/AppHeader'
 import { FEATURE_FLAGS } from '../config/featureFlags'
 import { mockExamConfig } from '../config/mockExamConfig'
 import {
@@ -193,18 +194,7 @@ export default function MockExamHome() {
   if (!canMockExam) {
     return (
       <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-            aria-label="홈으로"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-bold text-gray-900">모의고사</h1>
-        </div>
+        <AppHeader title="모의고사" />
 
         <div className="flex flex-col items-center gap-4 py-12 text-center">
           <span className="text-4xl">🔒</span>
@@ -226,19 +216,8 @@ export default function MockExamHome() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
       {/* 상단 헤더 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/')}
-            className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-            aria-label="홈으로"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-bold text-gray-900">모의고사</h1>
-        </div>
+      <AppHeader title="모의고사" />
+      <div className="flex justify-end -mt-4">
         {/* 통계 버튼: STEP 6에서 활성화 */}
         <button
           onClick={() => navigate('/mock/stats')}

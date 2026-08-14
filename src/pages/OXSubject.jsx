@@ -11,6 +11,7 @@ import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import useOxStore from '../stores/oxStore'
 import { OX_SUBJECTS } from '../config/oxSubjects'
+import AppHeader from '../components/AppHeader'
 
 // 과목별 컬러 테마
 const SUBJECT_THEME = {
@@ -78,21 +79,8 @@ export default function OXSubject() {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
-      {/* 상단: ← 뒤로 + 타이틀 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/ox')}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="뒤로"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">
-          {subjectInfo.label} · OX 학습
-        </h1>
-      </div>
+      {/* 상단: 공용 헤더 */}
+      <AppHeader title="과목 선택" />
 
       {/* 로딩 상태 */}
       {isLoading && (

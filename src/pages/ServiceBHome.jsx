@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
+import AppHeader from '../components/AppHeader'
 
 const SUBJECT_STYLES = {
   '법령': {
@@ -53,17 +54,7 @@ export default function ServiceBHome() {
 
   return (
     <div className="min-h-screen max-w-[640px] mx-auto bg-gray-50 px-4 py-6">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="min-h-[40px] px-2 text-sm font-semibold text-gray-500"
-        >
-          홈
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">과목별 랜덤풀이</h1>
-        <span className="w-10" />
-      </div>
+      <AppHeader title="과목별 랜덤풀이" />
 
       <div className="mt-5 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
         <p className="text-sm font-semibold text-indigo-800">서비스 B</p>

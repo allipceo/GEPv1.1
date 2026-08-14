@@ -1,3 +1,5 @@
+import AppHeader from '../components/AppHeader'
+
 export default function Settings() {
-  return null
+  return <AppHeader title="설정" />
 }
