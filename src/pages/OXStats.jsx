@@ -163,7 +163,7 @@ export default function OXStats() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
       {/* 헤더 */}
-      <AppHeader title="OX 학습 통계" />
+      <AppHeader title="OX 학습 통계" backTo="/ox" />
 
       {/* 로딩 */}
       {isLoading && (

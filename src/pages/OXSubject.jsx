@@ -80,7 +80,7 @@ export default function OXSubject() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
       {/* 상단: 공용 헤더 */}
-      <AppHeader title="과목 선택" />
+      <AppHeader title="과목 선택" backTo="/ox" />
 
       {/* 로딩 상태 */}
       {isLoading && (
