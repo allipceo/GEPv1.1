@@ -49,9 +49,9 @@ GEPv30-098~100에 이어 결과/통계/휴식 화면 8개에 공용 `AppHeader`�
 
 ## 6. 배포 결과
 
-- Commit: (커밋 후 기입)
-- URL: https://gepv11.vercel.app
-- 비고: GitHub push 후 Vercel 자동 배포
+- Commit: ef51cc8
+- URL: https://gepv11.vercel.app (READY 확인)
+- 비고: GitHub push 후 Vercel 자동 배포 완료
 
 ## 7. 다음 작업
 
