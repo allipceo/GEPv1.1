@@ -18,6 +18,8 @@ import { useMockExamStore } from '../stores/mockExamStore'
 import { mockExamConfig } from '../config/mockExamConfig'
 import { calculateScore, saveResult, mockExamSupabase } from '../services/mockExamService'
 import { useAuthStore } from '../stores/authStore'
+import { recordAttempt } from '../services/statsService'
+import useStatsStore from '../stores/statsStore'
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 const MOCK_LS_KEY = (round, part) => `gep:mock:${round}:${part}`
@@ -305,6 +307,19 @@ export default function MockExamQuiz() {
           }
         })
         .catch(() => {})
+
+      // [GEPv30-103] 일반 통계 테이블 동기화 (fire-and-forget)
+      const authState = useAuthStore.getState()
+      questions.forEach((q, idx) => {
+        const questionNum = idx + 1
+        const selected = answers[questionNum] ?? null
+        recordAttempt(useStatsStore.getState(), authState, {
+          question: q,
+          selectedAnswer: selected,
+          isCorrect: selected != null && Number(selected) === Number(q.answer),
+          studyMode: 'mock_exam',
+        })
+      })
     }
 
     // 성적표 이동

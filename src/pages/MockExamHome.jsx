@@ -22,6 +22,7 @@ import {
   calcAverage,
   checkPass,
   PROGRESS_LS_KEY,
+  RESULT_LS_KEY,
 } from '../services/mockExamService'
 
 // ── 게스트: localStorage에서 세션 이력 구성 ──────────────────────────────────
@@ -140,12 +141,28 @@ function RoundCard({ round, session, navigate }) {
         </button>
       )}
       {state === 'done' && (
-        <button
-          onClick={() => navigate(`/mock/${round}/result`)}
-          className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 active:bg-gray-300 transition-colors"
-        >
-          성적표 보기
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => navigate(`/mock/${round}/result`)}
+            className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 active:bg-gray-300 transition-colors"
+          >
+            성적표 보기
+          </button>
+          <button
+            onClick={() => {
+              try {
+                localStorage.removeItem(PROGRESS_LS_KEY(round, 'part1'))
+                localStorage.removeItem(PROGRESS_LS_KEY(round, 'part2'))
+                localStorage.removeItem(RESULT_LS_KEY(round, 'part1'))
+                localStorage.removeItem(RESULT_LS_KEY(round, 'part2'))
+              } catch (_) {}
+              navigate(`/mock/${round}/part1`)
+            }}
+            className="w-full py-2 rounded-lg border border-gray-200 text-gray-500 text-xs font-semibold hover:bg-gray-50 transition-colors"
+          >
+            재응시
+          </button>
+        </div>
       )}
     </div>
   )
