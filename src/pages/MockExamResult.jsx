@@ -15,6 +15,7 @@
 
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { checkPass, calcAverage, loadResult, RESULT_LS_KEY, PROGRESS_LS_KEY } from '../services/mockExamService'
+import AppHeader from '../components/AppHeader'
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 function formatDuration(seconds) {
@@ -80,6 +81,8 @@ function Part1Result({ round, scores, elapsedTime, navigate }) {
 
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
+
+      <AppHeader title={`${round}회 모의고사 결과`} backTo="/mock" />
 
       {/* 헤더 */}
       <div className="text-center py-4">
@@ -156,6 +159,8 @@ function Part2Result({ round, scores, elapsedTime, navigate }) {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
 
+      <AppHeader title={`${round}회 모의고사 결과`} backTo="/mock" />
+
       {/* 헤더 */}
       <div className="text-center py-4">
         <span className="text-3xl">📗📕</span>
@@ -223,6 +228,8 @@ function FinalResult({ round, part1Result, part2Result, navigate }) {
 
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
+
+      <AppHeader title={`${round}회 모의고사 결과`} backTo="/mock" />
 
       {/* 합격/불합격 헤더 */}
       <div className={`text-center py-6 rounded-2xl ${isPass ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'}`}>

@@ -17,6 +17,7 @@ import {
   calcAverage,
   analyzeWeakness,
 } from '../services/customMockService'
+import AppHeader from '../components/AppHeader'
 
 // ── 유틸 (MockExamResult 재활용) ───────────────────────────────────────────────
 function formatDuration(seconds) {
@@ -211,6 +212,8 @@ export default function CustomMockResult() {
   // ── 렌더 ───────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
+
+      <AppHeader title="맞춤 모의고사 결과" backTo="/custom-mock" />
 
       {/* 합격/불합격 헤더 */}
       <div className={`text-center py-6 rounded-2xl ${isPass ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'}`}>

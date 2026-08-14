@@ -28,6 +28,7 @@ import PassProbabilityCard from '../components/stats/PassProbabilityCard'
 import WeaknessHeatmap     from '../components/stats/WeaknessHeatmap'
 import DifficultyAnalysis  from '../components/stats/DifficultyAnalysis'
 import StudyRoadmap        from '../components/stats/StudyRoadmap'
+import AppHeader           from '../components/AppHeader'
 
 // ── 필터 상수 ─────────────────────────────────────────────────────────────────
 const FILTERS = ['전체', '원본만', '맞춤만']
@@ -303,18 +304,7 @@ export default function CustomMockStats() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
       {/* 상단 헤더 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/custom-mock')}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="맞춤 모의고사 홈으로"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">전체 모의고사 통계</h1>
-      </div>
+      <AppHeader title="맞춤 모의고사 통계" backTo="/custom-mock" />
 
       {/* 로딩 */}
       {isLoading && (

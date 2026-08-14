@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { mockExamConfig } from '../config/mockExamConfig'
+import AppHeader from '../components/AppHeader'
 
 function formatTime(seconds) {
   const s = Math.max(0, seconds)
@@ -78,18 +79,7 @@ export default function MockExamBreak() {
       {showTimeup && <TimeupModal round={round} navigate={navigate} />}
 
       {/* 상단 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(`/mock/${round}/part2`)}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="2교시 바로 시작"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">교시 간 휴식</h1>
-      </div>
+      <AppHeader title="교시 휴식" backTo="/mock" />
 
       {/* 타이머 카드 */}
       <div className="flex flex-col items-center gap-5 rounded-2xl bg-gray-50 border border-gray-200 px-6 py-10">

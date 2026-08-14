@@ -21,6 +21,7 @@ import {
 import { mockExamConfig } from '../config/mockExamConfig'
 import PredictionCard      from '../components/stats/PredictionCard'
 import PassProbabilityCard from '../components/stats/PassProbabilityCard'
+import AppHeader           from '../components/AppHeader'
 
 // ── 게스트 통계 구성 (localStorage) ──────────────────────────────────────────
 function buildGuestStats() {
@@ -270,18 +271,7 @@ export default function MockExamStats() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
 
       {/* 상단 헤더 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/mock')}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="모의고사 홈으로"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">모의고사 통계</h1>
-      </div>
+      <AppHeader title="모의고사 통계" backTo="/mock" />
 
       {/* 로딩 */}
       {isLoading && (

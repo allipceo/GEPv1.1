@@ -10,6 +10,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReclassificationAnimation from '../components/wrong/ReclassificationAnimation'
+import AppHeader from '../components/AppHeader'
 
 export default function ChallengeResult() {
   const navigate = useNavigate()
@@ -58,19 +59,9 @@ export default function ChallengeResult() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
 
       {/* ── 헤더 ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/unified-wrong')}
-          className="text-gray-400 hover:text-gray-700 p-1 -ml-1"
-          aria-label="뒤로가기"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-gray-900">도전 완료!</h1>
-        <span className="ml-auto text-xs text-gray-400">{minCount}회+ 모드</span>
+      <AppHeader title="챌린지 결과" backTo="/" />
+      <div className="flex justify-end -mt-3">
+        <span className="text-xs text-gray-400">{minCount}회+ 모드</span>
       </div>
 
       {/* ── Before/After 시각화 ───────────────────────────────────────────── */}

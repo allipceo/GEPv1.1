@@ -6,6 +6,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
+import AppHeader from '../components/AppHeader'
 
 export default function Result() {
   const navigate           = useNavigate()
@@ -15,6 +16,7 @@ export default function Result() {
   const selectedSubSubject = useExamStore((s) => s.selectedSubSubject)
   const answers            = useExamStore((s) => s.answers)
   const setCurrentIndex    = useExamStore((s) => s.setCurrentIndex)
+  const studyMode          = useExamStore((s) => s.studyMode)
 
   const filteredQuestions = useMemo(
     () =>
@@ -45,6 +47,10 @@ export default function Result() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white">
+      <AppHeader
+        title={label}
+        backTo={studyMode === 'service_a_sequence' ? '/service-a' : '/'}
+      />
       {/* 완료 메시지 */}
       <h1 className="text-2xl font-bold text-gray-900 mb-8">
         {label} 완료!

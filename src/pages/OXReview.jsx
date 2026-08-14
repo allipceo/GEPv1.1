@@ -11,6 +11,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import useOxStore from '../stores/oxStore'
 import { OX_SUBJECTS } from '../config/oxSubjects'
+import AppHeader from '../components/AppHeader'
 
 // 과목별 헤더 컬러
 const HEADER_BG = {
@@ -77,15 +78,13 @@ export default function OXReview() {
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
 
       {/* 상단 타이틀 */}
-      <div className="flex items-center gap-2">
+      <AppHeader title="라운드 완료" backTo={`/ox/${subjectKey}`} />
+      <div className="flex items-center gap-2 -mt-2">
         <span className="text-2xl">🎉</span>
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">라운드 완료!</h1>
-          <p className="text-xs text-gray-400">
-            {subjectInfo?.label ?? subjectKey}
-            {subSubject !== 'ALL' ? ` · ${subSubject}` : ' · 전체'}
-          </p>
-        </div>
+        <p className="text-xs text-gray-400">
+          {subjectInfo?.label ?? subjectKey}
+          {subSubject !== 'ALL' ? ` · ${subSubject}` : ' · 전체'}
+        </p>
       </div>
 
       {/* 세션 요약 카드 */}
