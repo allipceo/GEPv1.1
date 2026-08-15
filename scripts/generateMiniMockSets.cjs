@@ -53,6 +53,7 @@ for (let s = 0; s < SET_COUNT; s++) {
     picked.forEach(q => questions.push({
       id:          q.id,
       round:       q.round,        // statsService.recordAttempt() 필수 필드
+      roundNumber: q.roundNumber,  // 과목 내 순번(1~40) — GEPv30-112 문제 출처 표시용
       subject:     q.subject,
       subSubject:  q.subSubject,
       questionRaw: q.questionRaw,
