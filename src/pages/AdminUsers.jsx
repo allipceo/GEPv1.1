@@ -223,7 +223,7 @@ export default function AdminUsers() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-sm font-semibold text-red-700">운영자 권한이 필요합니다.</p>
           <p className="mt-1 text-sm text-red-600">
-            `VITE_GEP_ADMIN_EMAILS`와 Supabase `gep_admin_emails`에 운영자 이메일을 등록해야 합니다.
+            Supabase `users` 테이블에서 해당 계정의 `is_admin`을 `true`로 설정해야 합니다.
           </p>
         </div>
       </AdminShell>

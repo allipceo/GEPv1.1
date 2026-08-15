@@ -4,15 +4,6 @@ import { supabase } from '../lib/supabase'
 import { FEATURE_FLAGS } from '../config/featureFlags'
 import useStatsStore from './statsStore'
 
-const PILOT_ADMIN_EMAILS = ['choeunsang@gmail.com']
-
-const ADMIN_EMAILS = [
-  ...PILOT_ADMIN_EMAILS,
-  ...(import.meta.env.VITE_GEP_ADMIN_EMAILS ?? '').split(','),
-]
-  .map((email) => String(email).trim().toLowerCase())
-  .filter(Boolean)
-
 function buildFeatures(serviceLevel) {
   return {
     canStats: serviceLevel >= FEATURE_FLAGS.STATS_MIN_LEVEL,
@@ -68,7 +59,7 @@ export const useAuthStore = create(
 
         const { data, error } = await supabase
           .from('users')
-          .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at')
+          .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at,is_admin')
           .eq('user_id', userId)
           .single()
 
@@ -86,7 +77,7 @@ export const useAuthStore = create(
           status: data?.status ?? 'active',
           isPaused: data?.is_paused ?? false,
           approvalMemo: data?.approval_memo ?? null,
-          isAdmin: ADMIN_EMAILS.includes((email ?? '').toLowerCase()),
+          isAdmin: data?.is_admin ?? false,
         }
 
         get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, userId, profile)
@@ -140,7 +131,7 @@ export const useAuthStore = create(
 
             const { data, error } = await supabase
               .from('users')
-              .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at,last_device')
+              .select('service_level,status,is_paused,real_name,phone_number,approval_status,approval_memo,reset_baseline_at,last_device,is_admin')
               .eq('user_id', user.id)
               .single()
 
@@ -167,6 +158,7 @@ export const useAuthStore = create(
                 status: 'active',
                 approval_status: 'pending',
                 is_paused: false,
+                is_admin: false,
               }
             } else {
               serviceLevel = data.service_level ?? 1
@@ -180,7 +172,7 @@ export const useAuthStore = create(
               status: profileData?.status ?? 'active',
               isPaused: profileData?.is_paused ?? false,
               approvalMemo: profileData?.approval_memo ?? null,
-              isAdmin: ADMIN_EMAILS.includes((email ?? '').toLowerCase()),
+              isAdmin: profileData?.is_admin ?? false,
             }
 
             get().setAuth(serviceLevel, buildFeatures(serviceLevel), email, user.id, profile)

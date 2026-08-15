@@ -15,6 +15,21 @@ export async function resetCountingBaseline(authState, options = {}) {
   }
 
   const newBaselineAt = new Date().toISOString()
+
+  if (isSelfReset) {
+    // 본인 초기화 — SECURITY DEFINER RPC (users_self_update 정책 없이도 안전하게 본인 행만 갱신)
+    const { error } = await supabase.rpc('reset_counting_baseline', {
+      p_reason: options.reason ?? null,
+    })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, resetBaselineAt: newBaselineAt }
+  }
+
+  // 관리자가 타인 초기화 — 직접 UPDATE (users_admin_update 정책, 이번 정리 대상 아님)
   const previousBaselineAt = options.previousBaselineAt ?? null
 
   const { error: updateError } = await supabase
