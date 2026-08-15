@@ -34,6 +34,7 @@ import ChallengeResult     from './pages/ChallengeResult'
 import ProgressTracker     from './pages/ProgressTracker'
 import AdminUsers          from './pages/AdminUsers'
 import StatsDashboard      from './pages/StatsDashboard'
+import Settings            from './pages/Settings'
 import RequireLogin        from './components/RequireLogin'
 
 function protectedPage(element, options = {}) {
@@ -95,6 +96,7 @@ export default function App() {
         <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />)} />
         <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />)} />
         <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />)} />
+        <Route path="/settings" element={protectedPage(<Settings />)} />
       </Routes>
     </BrowserRouter>
   )

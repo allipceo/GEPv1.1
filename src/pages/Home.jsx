@@ -217,6 +217,17 @@ export default function Home() {
               관리자
             </button>
           )}
+
+          {/* [GEPv30-104] 일반 회원 설정 버튼 */}
+          {!isAdmin && authStatus === 'authenticated' && (
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className="text-sm text-gray-500 border rounded px-2 py-1"
+            >
+              설정
+            </button>
+          )}
           <button
             type="button"
             onClick={handleLogout}
