@@ -270,6 +270,11 @@ export default function MiniMockQuiz() {
           <span className="text-xs text-gray-300">·</span>
           <span className="text-xs text-gray-400">{currentIndex + 1}번</span>
         </div>
+        {question.roundNumber != null && (
+          <p className="text-xs text-gray-400 text-center -mt-2 mb-4">
+            (원본: {question.round}회 {question.subject} {question.roundNumber}번 문제)
+          </p>
+        )}
 
         <div className="text-sm text-gray-900 leading-relaxed">
           {question.questionRaw.split('\n').map((line, i) =>
