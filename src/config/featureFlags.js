@@ -10,6 +10,7 @@ export const FEATURE_FLAGS = {
   MOCKEXAM_MIN_LEVEL:       1,  // GEP_119 임시 해제 (Phase 6 테스트용). TODO: Phase 7에서 레벨 정책 재설계 후 일괄 재적용
   ADVANCED_STATS_MIN_LEVEL: 3,
   CUSTOMMOCK_MIN_LEVEL:     1,  // GEP_119 임시 해제 (Phase 6 테스트용). TODO: Phase 7에서 레벨 정책 재설계 후 일괄 재적용
+  MINIMOCK_MIN_LEVEL:       1,  // GEPv30-109/110 간이 모의고사 — 승인 사용자 전체
 };
 
 export const canUseFeature = (userLevel, featureMinLevel) => {

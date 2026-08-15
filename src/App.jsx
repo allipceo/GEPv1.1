@@ -35,6 +35,9 @@ import ProgressTracker     from './pages/ProgressTracker'
 import AdminUsers          from './pages/AdminUsers'
 import StatsDashboard      from './pages/StatsDashboard'
 import Settings            from './pages/Settings'
+import MiniMockHome        from './pages/MiniMockHome'
+import MiniMockQuiz        from './pages/MiniMockQuiz'
+import MiniMockResult      from './pages/MiniMockResult'
 import RequireLogin        from './components/RequireLogin'
 
 function protectedPage(element, options = {}) {
@@ -97,6 +100,9 @@ export default function App() {
         <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />)} />
         <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />)} />
         <Route path="/settings" element={protectedPage(<Settings />)} />
+        <Route path="/mini-mock" element={protectedPage(<MiniMockHome />)} />
+        <Route path="/mini-mock/:setId" element={protectedPage(<MiniMockQuiz />)} />
+        <Route path="/mini-mock/:setId/result" element={protectedPage(<MiniMockResult />)} />
       </Routes>
     </BrowserRouter>
   )

@@ -378,6 +378,20 @@ export default function Home() {
           <span className="text-gray-300 text-lg">›</span>
         </button>
 
+        {/* 간이 모의고사 — GEPv30-109/110 신규 연결 */}
+        <button
+          type="button"
+          onClick={() => navigate('/mini-mock')}
+          className="w-full flex items-center gap-3 rounded-2xl bg-cyan-50 px-4 py-3.5 text-left active:bg-cyan-100"
+        >
+          <span className="text-2xl">⏱️</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-cyan-800">간이 모의고사</p>
+            <p className="text-xs text-cyan-500 mt-0.5">30문제 · 40분 · 빠른 실전 연습</p>
+          </div>
+          <span className="text-gray-300 text-lg">›</span>
+        </button>
+
         {/* L2-F 통합오답 — 신규 연결 */}
         <button
           type="button"
