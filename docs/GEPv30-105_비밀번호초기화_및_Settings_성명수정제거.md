@@ -59,10 +59,10 @@
 
 ## 6. 배포 결과
 
-- Commit: (커밋 후 기입)
-- URL: https://gepv11.vercel.app
+- Commit: 1e6ae99
+- URL: https://gepv11.vercel.app (READY 확인)
 - Edge Function: `admin-reset-password` (project `xnmjprtodyonqzsqxxja`) — ACTIVE
-- 비고: GitHub push 후 Vercel 자동 배포. Edge Function은 Vercel 배포와 별도로 Supabase에 즉시 반영됨
+- 비고: GitHub push 후 Vercel 자동 배포 완료. Edge Function은 Vercel 배포와 별도로 Supabase에 즉시 반영됨(Supabase MCP `deploy_edge_function` 사용, 로컬 CLI는 미인증 상태)
 
 ## 7. 다음 작업
 
