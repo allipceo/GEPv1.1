@@ -4,12 +4,8 @@ import { supabase } from '../lib/supabase'
 import { FEATURE_FLAGS } from '../config/featureFlags'
 import useStatsStore from './statsStore'
 
-const PILOT_ADMIN_EMAILS = ['choeunsang@gmail.com']
-
-const ADMIN_EMAILS = [
-  ...PILOT_ADMIN_EMAILS,
-  ...(import.meta.env.VITE_GEP_ADMIN_EMAILS ?? '').split(','),
-]
+const ADMIN_EMAILS = (import.meta.env.VITE_GEP_ADMIN_EMAILS ?? '')
+  .split(',')
   .map((email) => String(email).trim().toLowerCase())
   .filter(Boolean)
 

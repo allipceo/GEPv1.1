@@ -71,12 +71,6 @@ export default function Home() {
       })
   }, [authStatus, userId, location.key])
 
-  // MCQ 통계 최신화 — 홈 재방문 시마다 DB에서 재동기화
-  useEffect(() => {
-    if (authStatus !== 'authenticated' || !userId) return
-    useStatsStore.getState().syncFromDB(userId)
-  }, [authStatus, userId, location.key])
-
   if (authStatus === 'guest') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">

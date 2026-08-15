@@ -226,11 +226,11 @@ const useExamStore = create((set, get) => ({
               progressMap: saved.progressMap ?? {},
             }
           } else {
-            clearStorage()
+            clearStorage(userId)
           }
         }
       } catch (_) {
-        clearStorage()
+        clearStorage(userId)
       }
 
       const tempState = { questions, ...restored }
