@@ -40,7 +40,8 @@ export default function Settings() {
   const [pwSaving, setPwSaving] = useState(false)
 
   const handlePwSave = async () => {
-    if (pw.length < 8) { setPwMsg('비밀번호는 8자리 이상이어야 합니다.'); return }
+    if (pw.length < 8) { setPwMsg('비밀번호는 8자리여야 합니다.'); return }
+    if (pw.length > 8) { setPwMsg('비밀번호는 8자리여야 합니다. (9자리 이상 불가)'); return }
     if (pw !== pwConfirm) { setPwMsg('비밀번호가 일치하지 않습니다.'); return }
     setPwSaving(true)
     const { error } = await supabase.auth.updateUser({ password: pw })
@@ -125,10 +126,10 @@ export default function Settings() {
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">보안</p>
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-4 flex flex-col gap-3">
           <p className="text-sm font-semibold text-gray-700">비밀번호 변경</p>
-          <p className="text-xs text-gray-400">8자리 이상의 새 비밀번호를 입력해 주세요.</p>
+          <p className="text-xs text-gray-400">새 비밀번호 8자리를 입력해 주세요.</p>
           <input
             type="password"
-            placeholder="새 비밀번호 (8자리 이상)"
+            placeholder="새 비밀번호 (8자리)"
             value={pw}
             onChange={(e) => { setPw(e.target.value); setPwMsg('') }}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
