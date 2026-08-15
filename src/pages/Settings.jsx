@@ -6,32 +6,12 @@ import AppHeader from '../components/AppHeader'
 
 export default function Settings() {
   const authState = useAuthStore.getState()
-  const realName  = useAuthStore((s) => s.realName)
   const email     = useAuthStore((s) => s.email)      // 사번@gep.local
-  const userId    = useAuthStore((s) => s.userId)
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const resetBaselineAt = useAuthStore((s) => s.resetBaselineAt)
 
   // 사번 추출 (이메일에서 @gep.local 제거)
   const employeeId = email ? email.replace('@gep.local', '') : '-'
-
-  // ── 성명 수정 ──
-  const [editName, setEditName] = useState(false)
-  const [newName, setNewName]   = useState(realName ?? '')
-  const [nameMsg, setNameMsg]   = useState('')
-
-  const handleNameSave = async () => {
-    if (!newName.trim()) { setNameMsg('성명을 입력해 주세요.'); return }
-    const { error } = await supabase
-      .from('users')
-      .update({ real_name: newName.trim() })
-      .eq('user_id', userId)
-    if (error) { setNameMsg('저장 실패: ' + error.message); return }
-    // authStore realName 갱신
-    useAuthStore.setState({ realName: newName.trim() })
-    setEditName(false)
-    setNameMsg('성명이 변경되었습니다.')
-  }
 
   // ── 비밀번호 변경 ──
   const [pw, setPw]         = useState('')
@@ -84,33 +64,6 @@ export default function Settings() {
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm text-gray-500">사번</span>
             <span className="text-sm font-medium text-gray-400">{employeeId}</span>
-          </div>
-
-          {/* 성명 */}
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">성명</span>
-              {!editName
-                ? <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-800">{realName ?? '-'}</span>
-                    <button onClick={() => { setEditName(true); setNameMsg('') }}
-                      className="text-xs text-blue-500 hover:text-blue-700">수정</button>
-                  </div>
-                : <div className="flex items-center gap-2">
-                    <input
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      className="border border-gray-200 rounded px-2 py-1 text-sm w-28 text-right"
-                      maxLength={20}
-                    />
-                    <button onClick={handleNameSave}
-                      className="text-xs text-blue-600 font-semibold">저장</button>
-                    <button onClick={() => { setEditName(false); setNewName(realName ?? '') }}
-                      className="text-xs text-gray-400">취소</button>
-                  </div>
-              }
-            </div>
-            {nameMsg && <p className="text-xs mt-1 text-right text-blue-500">{nameMsg}</p>}
           </div>
 
           {/* 서비스 레벨 */}

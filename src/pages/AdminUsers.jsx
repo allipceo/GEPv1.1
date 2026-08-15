@@ -29,6 +29,7 @@ export default function AdminUsers() {
   const [editingUserId, setEditingUserId] = useState(null)
   const [editRealName, setEditRealName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [resettingPwUserId, setResettingPwUserId] = useState(null)
 
   useEffect(() => {
     if (isAdmin) loadUsers()
@@ -96,6 +97,41 @@ export default function AdminUsers() {
     }
 
     await loadUsers()
+  }
+
+  const resetUserPassword = async (targetUser) => {
+    const confirmed = window.confirm(
+      `${targetUser.real_name || '이 사용자'}의 비밀번호를 휴대폰 뒷 8자리(${targetUser.phone_number?.slice(-8)})로 초기화하시겠습니까?`
+    )
+    if (!confirmed) return
+
+    setResettingPwUserId(targetUser.user_id)
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ targetUserId: targetUser.user_id }),
+        }
+      )
+      const result = await res.json()
+      if (!res.ok) {
+        setError(result.error ?? '비밀번호 초기화 실패')
+        return
+      }
+      window.alert(`비밀번호가 ${targetUser.phone_number?.slice(-8)}(으)로 초기화되었습니다.`)
+    } catch (err) {
+      setError(err.message ?? '비밀번호 초기화 중 오류')
+    } finally {
+      setResettingPwUserId(null)
+    }
   }
 
   const handleUpdateUser = async (targetUserId) => {
@@ -377,7 +413,19 @@ export default function AdminUsers() {
                   onClick={() => resetUserCounting(user)}
                   className="min-h-[40px] rounded-lg border border-red-200 bg-white px-3 text-sm font-semibold text-red-700"
                 >
-                  초기화
+                  통계초기화
+                </button>
+              </div>
+
+              {/* [GEPv30-105] 2행: 비밀번호 초기화 */}
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => resetUserPassword(user)}
+                  disabled={resettingPwUserId === user.user_id}
+                  className="w-full min-h-[40px] rounded-lg border border-orange-200 bg-orange-50 px-3 text-sm font-semibold text-orange-700 disabled:opacity-50"
+                >
+                  {resettingPwUserId === user.user_id ? '초기화 중...' : '비밀번호 초기화 (휴대폰 뒷8자리)'}
                 </button>
               </div>
             </div>
