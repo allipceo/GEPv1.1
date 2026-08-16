@@ -302,7 +302,7 @@ export default function Home() {
         {/* L2-A */}
         <button
           type="button"
-          onClick={isLocked('SERVICE_A') ? undefined : () => navigate('/service-a')}
+          onClick={() => navigate('/service-a')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3.5 text-left active:bg-blue-100 ${isLocked('SERVICE_A') ? 'opacity-50 cursor-default active:bg-blue-50' : ''}`}
         >
           <span className="text-2xl">📋</span>
@@ -334,7 +334,7 @@ export default function Home() {
         {/* L2-C */}
         <button
           type="button"
-          onClick={isLocked('OX') ? undefined : () => navigate('/ox')}
+          onClick={() => navigate('/ox')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3.5 text-left active:bg-emerald-100 ${isLocked('OX') ? 'opacity-50 cursor-default active:bg-emerald-50' : ''}`}
         >
           <span className="text-2xl">⭕</span>
@@ -368,7 +368,7 @@ export default function Home() {
         {/* L2-E 모의고사 — 신규 연결 */}
         <button
           type="button"
-          onClick={isLocked('MOCK_EXAM') ? undefined : () => navigate('/mock')}
+          onClick={() => navigate('/mock')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-violet-50 px-4 py-3.5 text-left active:bg-violet-100 ${isLocked('MOCK_EXAM') ? 'opacity-50 cursor-default active:bg-violet-50' : ''}`}
         >
           <span className="text-2xl">📝</span>
@@ -385,7 +385,7 @@ export default function Home() {
         {/* 간이 모의고사 — GEPv30-109/110 신규 연결 */}
         <button
           type="button"
-          onClick={isLocked('MINI_MOCK') ? undefined : () => navigate('/mini-mock')}
+          onClick={() => navigate('/mini-mock')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-cyan-50 px-4 py-3.5 text-left active:bg-cyan-100 ${isLocked('MINI_MOCK') ? 'opacity-50 cursor-default active:bg-cyan-50' : ''}`}
         >
           <span className="text-2xl">⏱️</span>
@@ -400,7 +400,7 @@ export default function Home() {
         {/* E-2 맞춤형 모의고사 — GEPv30-120 신규 메뉴 추가 */}
         <button
           type="button"
-          onClick={isLocked('CUSTOM_MOCK') ? undefined : () => navigate('/custom-mock')}
+          onClick={() => navigate('/custom-mock')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-fuchsia-50 px-4 py-3.5 text-left active:bg-fuchsia-100 ${isLocked('CUSTOM_MOCK') ? 'opacity-50 cursor-default active:bg-fuchsia-50' : ''}`}
         >
           <span className="text-2xl">🎯</span>
