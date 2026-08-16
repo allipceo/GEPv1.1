@@ -3,7 +3,7 @@
  * 모의고사 회차 선택 화면
  * GEP_054 Phase5 STEP2 | GEP_059 STEP5
  *
- * 레벨 게이트: userFeatures.canMockExam (serviceLevel >= 4)
+ * 레벨 게이트는 App.jsx 라우트 레벨(serviceKey: 'MOCK_EXAM')로 이관됨 (GEPv30-120)
  * 회차 카드 9개: mockExamConfig.rounds 기준 (23~31회)
  * 데이터 소스:
  *   - 회원: Supabase mock_exam_sessions 조회
@@ -14,7 +14,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import AppHeader from '../components/AppHeader'
-import { FEATURE_FLAGS } from '../config/featureFlags'
 import { mockExamConfig } from '../config/mockExamConfig'
 import {
   mockExamSupabase,
@@ -171,21 +170,14 @@ function RoundCard({ round, session, navigate }) {
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
 export default function MockExamHome() {
   const navigate    = useNavigate()
-  const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const userId       = useAuthStore((s) => s.userId)
   const authStatus   = useAuthStore((s) => s.authStatus)
-  const canMockExam  = serviceLevel >= FEATURE_FLAGS.MOCKEXAM_MIN_LEVEL  // persist 캐시 대신 직접 계산
 
   const [sessions,   setSessions]   = useState({})
   const [isLoading,  setIsLoading]  = useState(true)
 
   // ── 세션 이력 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!canMockExam) {
-      setIsLoading(false)
-      return
-    }
-
     async function loadSessions() {
       try {
         if (authStatus === 'authenticated' && userId) {
@@ -205,28 +197,7 @@ export default function MockExamHome() {
     }
 
     loadSessions()
-  }, [canMockExam, authStatus, userId])
-
-  // ── 레벨 게이트 ──────────────────────────────────────────────────────────
-  if (!canMockExam) {
-    return (
-      <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
-        <AppHeader title="모의고사" />
-
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <span className="text-4xl">🔒</span>
-          <p className="text-base font-semibold text-gray-700">레벨 4 전용 서비스입니다</p>
-          <p className="text-sm text-gray-400">모의고사는 레벨 4 이상 회원만 이용할 수 있습니다.</p>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-2 px-5 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-200 active:bg-gray-200 transition-colors"
-          >
-            ← 홈으로
-          </button>
-        </div>
-      </div>
-    )
-  }
+  }, [authStatus, userId])
 
   // ── 정상 화면 ─────────────────────────────────────────────────────────────
   return (

@@ -3,14 +3,11 @@
  * 간이 모의고사 세트 선택 화면
  * GEPv30-109 STEP 6 (+ GEPv30-110 레벨 게이트 정정 반영)
  *
- * 레벨 게이트: FEATURE_FLAGS.MINIMOCK_MIN_LEVEL — 컴포넌트 내부에서 직접 체크
- * (MockExamHome.jsx와 동일 패턴 — protectedPage에는 레벨 인자를 넘기지 않는다)
+ * 레벨 게이트는 App.jsx 라우트 레벨(serviceKey: 'MINI_MOCK')로 이관됨 (GEPv30-120)
  */
 
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../stores/authStore'
-import { FEATURE_FLAGS } from '../config/featureFlags'
 import AppHeader from '../components/AppHeader'
 import { MINI_PROGRESS_KEY, MINI_RESULT_KEY } from '../stores/miniMockStore'
 import miniMockConfig from '../config/miniMockConfig'
@@ -98,8 +95,6 @@ function ChoiceModal({ title, options, onCancel }) {
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
 export default function MiniMockHome() {
   const navigate = useNavigate()
-  const serviceLevel = useAuthStore((s) => s.serviceLevel)
-  const canMiniMock = serviceLevel >= FEATURE_FLAGS.MINIMOCK_MIN_LEVEL
 
   const [dialogSetId, setDialogSetId] = useState(null)
 
@@ -109,24 +104,6 @@ export default function MiniMockHome() {
     setIds.forEach(id => { map[id] = readSetStatus(id) })
     return map
   }, [setIds, dialogSetId])
-
-  if (!canMiniMock) {
-    return (
-      <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
-        <AppHeader title="간이 모의고사" />
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <span className="text-4xl">🔒</span>
-          <p className="text-base font-semibold text-gray-700">이용 권한이 없습니다</p>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-2 px-5 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-200"
-          >
-            ← 홈으로
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   function handleCardClick(setId) {
     const status = statuses[setId]
