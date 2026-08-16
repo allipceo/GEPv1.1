@@ -22,6 +22,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams }         from 'react-router-dom'
 import { useAuthStore }                   from '../stores/authStore'
 import useExamStore                       from '../stores/examStore'
+import useStatsStore                      from '../stores/statsStore'
+import { recordAttempt }                  from '../services/statsService'
+import { oxService }                      from '../services/oxService'
 import {
   getCachedWrongQuestions,
   filterByWrongCount,
@@ -225,6 +228,25 @@ export default function ChallengeMode() {
       source:    current.source,
       isCorrect,
     }])
+
+    // attempts 기록 (fire-and-forget) — 재도전 결과가 attempts 원장에 남아야
+    // get_unified_wrong_questions RPC가 다음 조회 시 "최근 정답"으로 반영한다.
+    const authState = useAuthStore.getState()
+    if (current.isOX) {
+      oxService.recordAttempt(authState, current.id, isCorrect, {
+        answer: answerValue,
+      }).catch(() => {})
+    } else {
+      const found = examQuestions.find(q => q.id === current.id)
+      if (found) {
+        recordAttempt(useStatsStore.getState(), authState, {
+          question:       found,
+          selectedAnswer: answerValue,
+          isCorrect,
+          studyMode:      'unified_wrong_challenge',
+        }).catch(() => {})
+      }
+    }
   }
 
   // ── 다음 문제 / 완료 ─────────────────────────────────────────────────────

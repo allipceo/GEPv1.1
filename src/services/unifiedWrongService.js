@@ -1,7 +1,7 @@
 /**
  * src/services/unifiedWrongService.js
  * 통합 오답 관리 서비스
- * GEP_095 Phase 6-3 STEP 1
+ * GEP_095 Phase 6-3 STEP 1 (GEPv30-115에서 attempts 원장 기반으로 재작성)
  *
  * 4개 소스(MCQ / OX / MOCK / CUSTOM) 오답 데이터를 단일 API로 제공
  *
@@ -9,12 +9,13 @@
  *   fetchAllWrongQuestions(userId)       - 병렬 조회 + 클라이언트 병합 + 캐시
  *   getCachedWrongQuestions(userId)      - localStorage TTL 캐시 조회
  *   calculateWrongCountStats(questions)  - 오답 횟수 분포 (sessionStorage 캐시)
- *   reclassifyResults(userId, results)   - 복습 후 정답→삭제 / 오답→+1 (2-call 병렬)
+ *   reclassifyResults(userId, results)   - 캐시 무효화 (재계산은 attempts 기록 기반 자동)
  *   filterByWrongCount(questions, min)   - 클라이언트 사이드 N회 이상 필터
  *
- * ※ reclassifyResults의 wrong_count 증가는 DB RPC 'increment_wrong_count' 필요
- *    (Supabase PostgREST SDK는 SET col = col + 1 미지원)
- *    RPC DDL: supabase/migrations/ 에 별도 파일로 관리
+ * MCQ/OX는 별도 상태 테이블(wrong_questions/ox_wrong_questions, DB에 존재하지 않음) 대신
+ * 'get_unified_wrong_questions' RPC로 attempts 원장을 직접 집계한다. wrong_count는
+ * 누적(계속 유지), 활성 목록 포함 여부는 최신 시도(last_correct)로 판단 — 재도전 결과는
+ * ChallengeMode.jsx가 attempts에 기록해야 다음 조회에 반영된다.
  *
  * 게스트: userId 없음 → 빈 배열 early-return
  */
@@ -64,17 +65,27 @@ export function getCachedWrongQuestions(userId) {
   }
 }
 
+// attempts 원장에서 오답을 집계할 study_mode 목록 (GEPv30-115)
+// wrong_questions/ox_wrong_questions 테이블이 DB에 존재하지 않아(GEPv30-113 이전부터
+// 누락) 통합오답복습이 항상 0문제였던 문제를 attempts 기반 RPC로 대체.
+const MCQ_STUDY_MODES = [
+  'service_a_sequence', 'service_b_subject_random', 'wrong_review',
+  'mini_mock', 'unified_wrong_challenge',
+]
+const OX_STUDY_MODES = ['ox']
+
 /**
  * 4개 소스의 오답 목록을 병렬 조회하여 클라이언트 병합
  *
- * 테이블별 조회:
- *   - wrong_questions      (MCQ) : question_id, wrong_count
- *   - ox_wrong_questions   (OX)  : question_id, wrong_count
- *   - mock_exam_attempts   (MOCK): is_correct=false → question_id별 집계
- *   - custom_mock_attempts (CUSTOM): is_correct=false → question_id별 집계
+ * 소스별 조회:
+ *   - MCQ/OX  : get_unified_wrong_questions RPC (attempts 원장 집계)
+ *               wrong_count = 누적 오답 시도 수(항상 유지), last_correct = 최신 시도 결과
+ *               → last_correct=false(아직 미해결)인 것만 활성 목록에 포함
+ *   - MOCK/CUSTOM : mock_exam_attempts/custom_mock_attempts에서 is_correct=false 집계
+ *               (해결/미해결 개념 없이 시도 자체를 누적 카운트 — 기존 방식 유지)
  *
  * 반환 형태:
- *   [{ id, source: 'MCQ'|'OX'|'MOCK'|'CUSTOM', wrong_count }]
+ *   [{ id, source: 'MCQ'|'OX'|'MOCK'|'CUSTOM', wrong_count, last_wrong_at? }]
  *   정렬: wrong_count 내림차순
  *
  * @param {string} userId
@@ -88,17 +99,10 @@ export async function fetchAllWrongQuestions(userId) {
   if (cached) return cached
 
   try {
-    // ── 4개 테이블 병렬 조회 ──────────────────────────────────────────────
+    // ── 4개 소스 병렬 조회 ──────────────────────────────────────────────
     const [mcqRes, oxRes, mockRes, customRes] = await Promise.all([
-      supabase
-        .from('wrong_questions')
-        .select('question_id, wrong_count')
-        .eq('user_id', userId),
-
-      supabase
-        .from('ox_wrong_questions')
-        .select('question_id, wrong_count')
-        .eq('user_id', userId),
+      supabase.rpc('get_unified_wrong_questions', { p_study_modes: MCQ_STUDY_MODES }),
+      supabase.rpc('get_unified_wrong_questions', { p_study_modes: OX_STUDY_MODES }),
 
       supabase
         .from('mock_exam_attempts')
@@ -115,19 +119,25 @@ export async function fetchAllWrongQuestions(userId) {
 
     // ── 클라이언트 병합 ───────────────────────────────────────────────────
 
-    // MCQ: wrong_questions 테이블 (wrong_count 컬럼 보유)
-    const mcqItems = (mcqRes.data ?? []).map(q => ({
-      id:          q.question_id,
-      source:      'MCQ',
-      wrong_count: q.wrong_count ?? 1,
-    }))
+    // MCQ: RPC 결과 중 최신 시도가 오답인 것(last_correct=false)만 활성 목록에 포함
+    const mcqItems = (mcqRes.data ?? [])
+      .filter(q => q.last_correct === false)
+      .map(q => ({
+        id:            q.question_id,
+        source:        'MCQ',
+        wrong_count:   q.wrong_count,
+        last_wrong_at: q.last_wrong_at,
+      }))
 
-    // OX: ox_wrong_questions 테이블 (wrong_count 컬럼 보유)
-    const oxItems = (oxRes.data ?? []).map(q => ({
-      id:          q.question_id,
-      source:      'OX',
-      wrong_count: q.wrong_count ?? 1,
-    }))
+    // OX: 동일한 RPC, study_mode='ox'만
+    const oxItems = (oxRes.data ?? [])
+      .filter(q => q.last_correct === false)
+      .map(q => ({
+        id:            q.question_id,
+        source:        'OX',
+        wrong_count:   q.wrong_count,
+        last_wrong_at: q.last_wrong_at,
+      }))
 
     // MOCK: mock_exam_attempts에서 is_correct=false 집계 (question_id별 카운트)
     const mockCounts = {}
@@ -214,22 +224,12 @@ export function calculateWrongCountStats(questions) {
 
 /**
  * 오답 복습 결과 재분류
- * - 정답 항목: wrong_questions / ox_wrong_questions 에서 DELETE
- * - 오답 항목: wrong_count + 1 (DB RPC 'increment_wrong_count' 사용)
  *
- * Promise.all 병렬 처리 (DELETE 1슬롯 + UPDATE 1슬롯)
- * MOCK / CUSTOM 소스는 전용 wrong 테이블 없음 → 집계용이므로 skip
- *
- * ※ 'increment_wrong_count' RPC 미생성 시 UPDATE 슬롯은 0 반환 (에러 무시)
- *    DDL 예시:
- *    CREATE OR REPLACE FUNCTION increment_wrong_count(
- *      p_user_id UUID, p_table TEXT, p_question_ids TEXT[]
- *    ) RETURNS void AS $$
- *      UPDATE wrong_questions
- *        SET wrong_count = wrong_count + 1
- *        WHERE user_id = p_user_id AND question_id = ANY(p_question_ids);
- *      -- p_table 파라미터로 분기하거나 함수를 테이블별로 분리
- *    $$ LANGUAGE sql SECURITY DEFINER;
+ * GEPv30-115부터는 별도 상태 테이블을 직접 DELETE/UPDATE하지 않는다.
+ * ChallengeMode.jsx가 재도전 결과를 attempts 원장에 기록하므로,
+ * get_unified_wrong_questions RPC가 다음 조회 시 최신 시도(last_correct) 기준으로
+ * 자동 재계산한다. 이 함수는 로컬 캐시만 무효화해 다음 fetchAllWrongQuestions 호출이
+ * 캐시 대신 최신 데이터를 다시 읽도록 보장한다.
  *
  * @param {string} userId
  * @param {Array}  results - [{ id: string, source: 'MCQ'|'OX'|'MOCK'|'CUSTOM', isCorrect: boolean }]
@@ -237,68 +237,8 @@ export function calculateWrongCountStats(questions) {
  */
 export async function reclassifyResults(userId, results) {
   if (!userId || !results?.length) return { success: false, deleted: 0, updated: 0 }
-
-  const mcqCorrect = results.filter(r => r.source === 'MCQ' && r.isCorrect).map(r => r.id)
-  const mcqWrong   = results.filter(r => r.source === 'MCQ' && !r.isCorrect).map(r => r.id)
-  const oxCorrect  = results.filter(r => r.source === 'OX'  && r.isCorrect).map(r => r.id)
-  const oxWrong    = results.filter(r => r.source === 'OX'  && !r.isCorrect).map(r => r.id)
-
-  try {
-    // Promise.all 2-슬롯: DELETE + UPDATE 병렬 실행
-    const [deleted, updated] = await Promise.all([
-
-      // 슬롯 1 — DELETE: 정답 처리된 항목 오답 테이블에서 제거
-      (async () => {
-        let count = 0
-        if (mcqCorrect.length > 0) {
-          const { error } = await supabase
-            .from('wrong_questions')
-            .delete()
-            .eq('user_id', userId)
-            .in('question_id', mcqCorrect)
-          if (!error) count += mcqCorrect.length
-        }
-        if (oxCorrect.length > 0) {
-          const { error } = await supabase
-            .from('ox_wrong_questions')
-            .delete()
-            .eq('user_id', userId)
-            .in('question_id', oxCorrect)
-          if (!error) count += oxCorrect.length
-        }
-        return count
-      })(),
-
-      // 슬롯 2 — UPDATE: 오답 항목 wrong_count + 1 (DB RPC 사용)
-      (async () => {
-        let count = 0
-        if (mcqWrong.length > 0) {
-          const { error } = await supabase.rpc('increment_wrong_count_mcq', {
-            p_user_id:      userId,
-            p_question_ids: mcqWrong,
-          })
-          if (!error) count += mcqWrong.length
-        }
-        if (oxWrong.length > 0) {
-          const { error } = await supabase.rpc('increment_wrong_count_ox', {
-            p_user_id:      userId,
-            p_question_ids: oxWrong,
-          })
-          if (!error) count += oxWrong.length
-        }
-        return count
-      })(),
-    ])
-
-    // 캐시 무효화 (다음 조회 시 최신 데이터 반영)
-    invalidateCache(userId)
-
-    return { success: true, deleted, updated }
-
-  } catch (err) {
-    console.warn('[unifiedWrongService] reclassifyResults 오류:', err.message)
-    return { success: false, deleted: 0, updated: 0 }
-  }
+  invalidateCache(userId)
+  return { success: true, deleted: 0, updated: 0 }
 }
 
 /**

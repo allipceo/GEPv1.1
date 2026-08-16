@@ -18,11 +18,27 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import useExamStore from '../stores/examStore'
 import {
   fetchAllWrongQuestions,
   calculateWrongCountStats,
   filterByWrongCount,
 } from '../services/unifiedWrongService'
+
+// MCQ 항목에 examStore 문제 원문/과목 정보를 조인 (ChallengeMode.jsx의 enrichQuestion과 동일 패턴).
+// OX는 원문을 별도 로드하지 않는 기존 설계를 그대로 따른다 — 카드에는 "문제 내용 없음" 폴백이 표시된다.
+function enrichWithExamQuestions(questions, examQuestions) {
+  return questions.map(q => {
+    if (q.source !== 'MCQ') return q
+    const found = examQuestions.find(eq => eq.id === q.id)
+    if (!found) return q
+    return {
+      ...q,
+      questionRaw: found.questionRaw ?? null,
+      sub_subject: found.subSubject ?? null,
+    }
+  })
+}
 import WrongCountDistribution from '../components/wrong/WrongCountDistribution'
 import WrongQuestionCard      from '../components/wrong/WrongQuestionCard'
 import StudyPresetCard, { buildStudyPresets } from '../components/wrong/StudyPresetCard'
@@ -41,6 +57,7 @@ export default function UnifiedWrongReview() {
   const navigate   = useNavigate()
   const userId     = useAuthStore(s => s.userId)
   const authStatus = useAuthStore(s => s.authStatus)
+  const examQuestions = useExamStore(s => s.questions)
 
   const [questions,      setQuestions]      = useState([])
   const [isLoading,      setIsLoading]      = useState(true)
@@ -59,7 +76,7 @@ export default function UnifiedWrongReview() {
       }
       try {
         const data = await fetchAllWrongQuestions(userId)
-        setQuestions(data)
+        setQuestions(enrichWithExamQuestions(data, examQuestions))
       } catch (err) {
         console.warn('[UnifiedWrongReview] 로드 실패:', err.message)
       } finally {
@@ -67,7 +84,7 @@ export default function UnifiedWrongReview() {
       }
     }
     load()
-  }, [authStatus, userId])
+  }, [authStatus, userId, examQuestions])
 
   // ── 파생값 ─────────────────────────────────────────────────────────────────
   const stats        = calculateWrongCountStats(questions)
