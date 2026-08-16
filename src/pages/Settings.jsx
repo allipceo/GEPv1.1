@@ -24,11 +24,22 @@ export default function Settings() {
     if (pw.length > 8) { setPwMsg('비밀번호는 8자리여야 합니다. (9자리 이상 불가)'); return }
     if (pw !== pwConfirm) { setPwMsg('비밀번호가 일치하지 않습니다.'); return }
     setPwSaving(true)
-    const { error } = await supabase.auth.updateUser({ password: pw })
-    setPwSaving(false)
-    if (error) { setPwMsg('변경 실패: ' + error.message); return }
-    setPw(''); setPwConfirm('')
-    setPwMsg('비밀번호가 변경되었습니다.')
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw })
+      if (error) { setPwMsg('변경 실패: ' + error.message); return }
+      setPw(''); setPwConfirm('')
+      setPwMsg('비밀번호가 변경되었습니다.')
+    } catch (e) {
+      // Supabase GoTrueClient는 동일 origin의 다른 탭이 인증 토큰 락을 쥐고 있으면
+      // updateUser() 호출이 예외(LockManager 타임아웃)를 던진다 — {error} 반환이 아니라 throw.
+      if (e?.message?.toLowerCase().includes('lock')) {
+        setPwMsg('다른 탭에서 GEP가 열려 있으면 비밀번호를 변경할 수 없습니다. 다른 탭을 닫고 다시 시도해 주세요.')
+      } else {
+        setPwMsg('변경 중 오류가 발생했습니다. 새로고침 후 다시 시도해 주세요.')
+      }
+    } finally {
+      setPwSaving(false)
+    }
   }
 
   // ── 통계 초기화 ──
