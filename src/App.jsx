@@ -38,6 +38,7 @@ import Settings            from './pages/Settings'
 import MiniMockHome        from './pages/MiniMockHome'
 import MiniMockQuiz        from './pages/MiniMockQuiz'
 import MiniMockResult      from './pages/MiniMockResult'
+import MiniMockStats       from './pages/MiniMockStats'
 import RequireLogin        from './components/RequireLogin'
 
 function protectedPage(element, options = {}) {
@@ -108,6 +109,7 @@ export default function App() {
         <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />)} />
         <Route path="/settings" element={protectedPage(<Settings />)} />
         <Route path="/mini-mock" element={protectedPage(<MiniMockHome />, { serviceKey: 'MINI_MOCK' })} />
+        <Route path="/mini-mock/stats" element={protectedPage(<MiniMockStats />, { serviceKey: 'MINI_MOCK' })} />
         <Route path="/mini-mock/:setId" element={protectedPage(<MiniMockQuiz />, { serviceKey: 'MINI_MOCK' })} />
         <Route path="/mini-mock/:setId/result" element={protectedPage(<MiniMockResult />, { serviceKey: 'MINI_MOCK' })} />
       </Routes>

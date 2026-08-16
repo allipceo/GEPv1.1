@@ -5,6 +5,7 @@ import miniMockConfig from '../config/miniMockConfig'
 import { recordAttempt } from './statsService'
 import useStatsStore from '../stores/statsStore'
 import { useAuthStore } from '../stores/authStore'
+import { supabase } from '../lib/supabase'
 
 // ── 5-1. 세트 로드 ───────────────────────────────────────────────────────────
 
@@ -126,4 +127,29 @@ export function submitMiniMockStats(questions, answers) {
     })
     // fire-and-forget — await 없음
   })
+}
+
+// ── 5-4. 통계 조회 (GEPv30-128 STEP 3) ───────────────────────────────────────
+
+/**
+ * 간이모의고사 문항별 시도 기록 조회 (공용 attempts 테이블, study_mode 필터)
+ *
+ * @param {string} userId
+ * @returns {Promise<Array<{question_id:string, sub_subject:string, is_correct:boolean}>>}
+ */
+export async function getMiniMockAttempts(userId) {
+  if (!userId) return []
+  try {
+    const { data, error } = await supabase
+      .from('attempts')
+      .select('question_id, sub_subject, is_correct, attempted_at')
+      .eq('user_id', userId)
+      .eq('study_mode', miniMockConfig.studyMode)
+      .order('attempted_at', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[miniMockService] getMiniMockAttempts 오류:', err.message)
+    return []
+  }
 }

@@ -119,6 +119,14 @@ export default function MiniMockHome() {
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-5">
       <AppHeader title="간이 모의고사" />
+      <div className="flex justify-end -mt-3">
+        <button
+          onClick={() => navigate('/mini-mock/stats')}
+          className="text-sm text-indigo-500 font-semibold hover:text-indigo-700 transition-colors"
+        >
+          통계 ›
+        </button>
+      </div>
 
       <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 flex flex-col gap-1">
         <p className="text-xs font-bold text-indigo-700">간이 모의고사 안내</p>

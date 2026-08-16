@@ -334,4 +334,27 @@ export const mockExamSupabase = {
       return {}
     }
   },
+
+  /**
+   * 문항별 응답 원장 조회 (GEPv30-128 STEP 3)
+   * mock_exam_attempts에는 subject/sub_subject 컬럼이 없어 question_id만 반환 —
+   * 호출부에서 examStore.questions와 조인해 세부과목을 붙여야 함.
+   *
+   * @param {string} userId
+   * @returns {Promise<Array<{question_id:string, is_correct:boolean}>>}
+   */
+  getAttempts: async (userId) => {
+    if (!userId) return []
+    try {
+      const { data, error } = await supabase
+        .from('mock_exam_attempts')
+        .select('question_id, is_correct')
+        .eq('user_id', userId)
+      if (error) throw error
+      return data ?? []
+    } catch (err) {
+      console.warn('[mockExamService] getAttempts 실패:', err.message)
+      return []
+    }
+  },
 }

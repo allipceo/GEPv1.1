@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import useExamStore from '../stores/examStore'
 import {
   mockExamSupabase,
   loadResult,
@@ -21,7 +22,17 @@ import {
 import { mockExamConfig } from '../config/mockExamConfig'
 import PredictionCard      from '../components/stats/PredictionCard'
 import PassProbabilityCard from '../components/stats/PassProbabilityCard'
+import WeaknessHeatmap     from '../components/stats/WeaknessHeatmap'
+import StudyRoadmap        from '../components/stats/StudyRoadmap'
 import AppHeader           from '../components/AppHeader'
+
+// mock_exam_attempts에는 subject/sub_subject 컬럼이 없어 examStore.questions와 조인 (GEPv30-128 STEP 3)
+function joinSubSubject(rawAttempts, questions) {
+  const byId = new Map(questions.map((q) => [String(q.id), q.subSubject]))
+  return rawAttempts
+    .map((a) => ({ sub_subject: byId.get(String(a.question_id)), is_correct: a.is_correct }))
+    .filter((a) => a.sub_subject)
+}
 
 // ── 게스트 통계 구성 (localStorage) ──────────────────────────────────────────
 function buildGuestStats() {
@@ -217,8 +228,10 @@ export default function MockExamStats() {
   const navigate   = useNavigate()
   const userId     = useAuthStore((s) => s.userId)
   const authStatus = useAuthStore((s) => s.authStatus)
+  const questions  = useExamStore((s) => s.questions)
 
   const [records,   setRecords]   = useState([])   // 완료된 응시 목록
+  const [questionAttempts, setQuestionAttempts] = useState([])   // 문항별 원장 (약점 분석용)
   const [isLoading, setIsLoading] = useState(true)
 
   // ── 데이터 로드 ──────────────────────────────────────────────────────────────
@@ -238,6 +251,9 @@ export default function MockExamStats() {
             }))
             .sort((a, b) => a.round - b.round)
           setRecords(completed)
+
+          const rawAttempts = await mockExamSupabase.getAttempts(userId)
+          setQuestionAttempts(joinSubSubject(rawAttempts, questions))
         } else {
           // 게스트: localStorage
           setRecords(buildGuestStats())
@@ -250,7 +266,7 @@ export default function MockExamStats() {
       }
     }
     load()
-  }, [authStatus, userId])
+  }, [authStatus, userId, questions])
 
   // ── 집계 ─────────────────────────────────────────────────────────────────────
   const totalAttempts = records.length
@@ -302,6 +318,10 @@ export default function MockExamStats() {
             <PredictionCard      records={records} />
             <PassProbabilityCard records={records} />
           </div>
+
+          {/* ── 1-1. 세부과목 약점 분석 + 학습 로드맵 (GEPv30-128) ──────────── */}
+          <WeaknessHeatmap questionAttempts={questionAttempts} />
+          <StudyRoadmap    questionAttempts={questionAttempts} />
 
           {/* ── 2. 전체 요약 ─────────────────────────────────────────────────── */}
           <div className="flex flex-col gap-3">
