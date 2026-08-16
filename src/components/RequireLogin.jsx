@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LoginButton from './LoginButton'
 import { useAuthStore } from '../stores/authStore'
+import { isServiceEnabled } from '../config/featureFlags'
+import ServiceLockedDialog from './ServiceLockedDialog'
 
 function LoginRequiredDialog() {
   const navigate = useNavigate()
@@ -149,7 +151,7 @@ function AccessShell({ title, children }) {
   )
 }
 
-export default function RequireLogin({ children, requireApproval = true }) {
+export default function RequireLogin({ children, requireApproval = true, serviceKey }) {
   const authStatus = useAuthStore((s) => s.authStatus)
   const approvalStatus = useAuthStore((s) => s.approvalStatus)
   const status = useAuthStore((s) => s.status)
@@ -158,7 +160,13 @@ export default function RequireLogin({ children, requireApproval = true }) {
 
   if (authStatus === 'guest') return <LoginRequiredDialog />
   if (!requireApproval) return children
-  if (isAdmin || (approvalStatus === 'approved' && status === 'active' && !isPaused)) return children
+  if (isAdmin || (approvalStatus === 'approved' && status === 'active' && !isPaused)) {
+    // 서비스 잠금 체크 — 관리자는 QA를 위해 우회 (GEPv30-120)
+    if (serviceKey && !isAdmin && !isServiceEnabled(serviceKey)) {
+      return <ServiceLockedDialog />
+    }
+    return children
+  }
 
   return <ApprovalRequiredDialog />
 }

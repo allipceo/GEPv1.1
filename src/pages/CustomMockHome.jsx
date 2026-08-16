@@ -3,7 +3,7 @@
  * 맞춤 모의고사 모드 선택 화면
  * GEP_074 Phase 6-1 STEP 3
  *
- * 레벨5 게이트: serviceLevel >= FEATURE_FLAGS.CUSTOMMOCK_MIN_LEVEL
+ * 레벨 게이트는 App.jsx 라우트 레벨(serviceKey: 'CUSTOM_MOCK')로 이관됨 (GEPv30-120)
  * 모드: 표준(standard) / 약점 집중(weakness)
  * 타이머: FULL(실제시간) / SHORT(단축80%)
  */
@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useCustomMockStore } from '../stores/customMockStore'
 import AppHeader from '../components/AppHeader'
-import { FEATURE_FLAGS } from '../config/featureFlags'
 import { customMockConfig } from '../config/customMockConfig'
 import { analyzeWeakness, customMockSupabase } from '../services/customMockService'
 
@@ -160,32 +159,11 @@ function SessionRow({ session, index }) {
   )
 }
 
-// 레벨 게이트 화면
-function LockScreen({ navigate }) {
-  return (
-    <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
-      <AppHeader title="맞춤 모의고사" />
-      <div className="flex flex-col items-center gap-4 py-14 text-center">
-        <span className="text-4xl">🔒</span>
-        <p className="text-base font-semibold text-gray-700">레벨 5 전용 서비스입니다</p>
-        <p className="text-sm text-gray-400">맞춤 모의고사는 레벨 5 이상 회원만 이용할 수 있습니다.</p>
-        <button
-          onClick={() => navigate('/')}
-          className="mt-2 px-5 py-2.5 rounded-xl bg-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition-colors"
-        >
-          ← 홈으로
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
 export default function CustomMockHome() {
   const navigate      = useNavigate()
   const userId        = useAuthStore(s => s.userId)
   const authStatus    = useAuthStore(s => s.authStatus)
-  const serviceLevel  = useAuthStore(s => s.serviceLevel)
 
   const startSession  = useCustomMockStore(s => s.startSession)
 
@@ -205,12 +183,9 @@ export default function CustomMockHome() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [genError,     setGenError]     = useState(null)
 
-  // ── 레벨 게이트 ──────────────────────────────────────────────────────────
-  const canCustomMock = serviceLevel >= FEATURE_FLAGS.CUSTOMMOCK_MIN_LEVEL
-
   // ── 데이터 로드 ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!canCustomMock || authStatus !== 'authenticated' || !userId) {
+    if (authStatus !== 'authenticated' || !userId) {
       setIsLoadingWeak(false)
       setIsLoadingHist(false)
       return
@@ -227,7 +202,7 @@ export default function CustomMockHome() {
       .then(data => setRecentSessions(data.slice(0, 5)))
       .catch(() => setRecentSessions([]))
       .finally(() => setIsLoadingHist(false))
-  }, [canCustomMock, authStatus, userId])
+  }, [authStatus, userId])
 
   // ── 생성하기 ──────────────────────────────────────────────────────────────
   async function handleGenerate() {
@@ -252,8 +227,6 @@ export default function CustomMockHome() {
   }
 
   // ── 렌더 ─────────────────────────────────────────────────────────────────
-
-  if (!canCustomMock) return <LockScreen navigate={navigate} />
 
   const weaknessDisabled = !weaknessData?.hasEnoughData
   const isWeakMode       = mode === customMockConfig.MODES.WEAKNESS

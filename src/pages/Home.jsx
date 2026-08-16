@@ -10,6 +10,7 @@ import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
 import { canCountAttempts } from '../services/countingEligibility'
+import { isServiceEnabled } from '../config/featureFlags'
 
 const EXAM_DATE = new Date('2026-11-15')
 const SUBJECTS = ['법령', '손보1부', '손보2부']
@@ -88,6 +89,9 @@ export default function Home() {
   const canUseCounting = canCountAttempts({
     authStatus, serviceLevel, userId, approvalStatus, status, isPaused, isAdmin,
   })
+
+  // 서비스 순차 가동 잠금 표시 (GEPv30-120) — 관리자는 QA를 위해 잠금 표시 없음
+  const isLocked = (serviceKey) => !isAdmin && !isServiceEnabled(serviceKey)
 
   const dDay = calcDday()
 
@@ -298,15 +302,17 @@ export default function Home() {
         {/* L2-A */}
         <button
           type="button"
-          onClick={() => navigate('/service-a')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3.5 text-left active:bg-blue-100"
+          onClick={isLocked('SERVICE_A') ? undefined : () => navigate('/service-a')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3.5 text-left active:bg-blue-100 ${isLocked('SERVICE_A') ? 'opacity-50 cursor-default active:bg-blue-50' : ''}`}
         >
           <span className="text-2xl">📋</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-blue-800">선택형 풀기 — 회차순</p>
             <p className="text-xs text-blue-500 mt-0.5">23~31회 기출 순서대로</p>
           </div>
-          <span className="text-xs font-bold text-blue-300 bg-blue-100 px-1.5 py-0.5 rounded-full">L2-A</span>
+          {isLocked('SERVICE_A')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-blue-300 bg-blue-100 px-1.5 py-0.5 rounded-full">L2-A</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
 
@@ -328,15 +334,17 @@ export default function Home() {
         {/* L2-C */}
         <button
           type="button"
-          onClick={() => navigate('/ox')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3.5 text-left active:bg-emerald-100"
+          onClick={isLocked('OX') ? undefined : () => navigate('/ox')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3.5 text-left active:bg-emerald-100 ${isLocked('OX') ? 'opacity-50 cursor-default active:bg-emerald-50' : ''}`}
         >
           <span className="text-2xl">⭕</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-emerald-800">진위형 풀기 — 과목별</p>
             <p className="text-xs text-emerald-500 mt-0.5">O/X 세부과목 선택</p>
           </div>
-          <span className="text-xs font-bold text-emerald-300 bg-emerald-100 px-1.5 py-0.5 rounded-full">L2-C</span>
+          {isLocked('OX')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-emerald-300 bg-emerald-100 px-1.5 py-0.5 rounded-full">L2-C</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
 
@@ -360,29 +368,49 @@ export default function Home() {
         {/* L2-E 모의고사 — 신규 연결 */}
         <button
           type="button"
-          onClick={() => navigate('/mock')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-violet-50 px-4 py-3.5 text-left active:bg-violet-100"
+          onClick={isLocked('MOCK_EXAM') ? undefined : () => navigate('/mock')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-violet-50 px-4 py-3.5 text-left active:bg-violet-100 ${isLocked('MOCK_EXAM') ? 'opacity-50 cursor-default active:bg-violet-50' : ''}`}
         >
           <span className="text-2xl">📝</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-violet-800">모의고사</p>
             <p className="text-xs text-violet-400 mt-0.5">회차별 120문제 · 실전 타이머</p>
           </div>
-          <span className="text-xs font-bold text-violet-300 bg-violet-100 px-1.5 py-0.5 rounded-full">L2-E</span>
+          {isLocked('MOCK_EXAM')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-violet-300 bg-violet-100 px-1.5 py-0.5 rounded-full">L2-E</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
 
         {/* 간이 모의고사 — GEPv30-109/110 신규 연결 */}
         <button
           type="button"
-          onClick={() => navigate('/mini-mock')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-cyan-50 px-4 py-3.5 text-left active:bg-cyan-100"
+          onClick={isLocked('MINI_MOCK') ? undefined : () => navigate('/mini-mock')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-cyan-50 px-4 py-3.5 text-left active:bg-cyan-100 ${isLocked('MINI_MOCK') ? 'opacity-50 cursor-default active:bg-cyan-50' : ''}`}
         >
           <span className="text-2xl">⏱️</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-cyan-800">간이 모의고사</p>
             <p className="text-xs text-cyan-500 mt-0.5">30문제 · 40분 · 빠른 실전 연습</p>
           </div>
+          {isLocked('MINI_MOCK') && <span className="text-gray-400 text-lg">🔒</span>}
+          <span className="text-gray-300 text-lg">›</span>
+        </button>
+
+        {/* E-2 맞춤형 모의고사 — GEPv30-120 신규 메뉴 추가 */}
+        <button
+          type="button"
+          onClick={isLocked('CUSTOM_MOCK') ? undefined : () => navigate('/custom-mock')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-fuchsia-50 px-4 py-3.5 text-left active:bg-fuchsia-100 ${isLocked('CUSTOM_MOCK') ? 'opacity-50 cursor-default active:bg-fuchsia-50' : ''}`}
+        >
+          <span className="text-2xl">🎯</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-fuchsia-800">맞춤형 모의고사</p>
+            <p className="text-xs text-fuchsia-400 mt-0.5">과목·난이도·문항수 직접 설정</p>
+          </div>
+          {isLocked('CUSTOM_MOCK')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-fuchsia-300 bg-fuchsia-100 px-1.5 py-0.5 rounded-full">L2-E2</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
 

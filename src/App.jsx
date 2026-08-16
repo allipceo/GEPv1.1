@@ -41,7 +41,12 @@ import MiniMockResult      from './pages/MiniMockResult'
 import RequireLogin        from './components/RequireLogin'
 
 function protectedPage(element, options = {}) {
-  return <RequireLogin {...options}>{element}</RequireLogin>
+  const { serviceKey, ...restOptions } = options
+  return (
+    <RequireLogin {...restOptions} serviceKey={serviceKey}>
+      {element}
+    </RequireLogin>
+  )
 }
 
 export default function App() {
@@ -72,37 +77,39 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/service-a" element={protectedPage(<ServiceAHome />)} />
-        <Route path="/service-b" element={protectedPage(<ServiceBHome />)} />
+        <Route path="/service-a" element={protectedPage(<ServiceAHome />, { serviceKey: 'SERVICE_A' })} />
+        <Route path="/service-b" element={protectedPage(<ServiceBHome />, { serviceKey: 'SERVICE_B' })} />
         <Route path="/admin/users" element={protectedPage(<AdminUsers />, { requireApproval: false })} />
+        {/* /question, /result, /wrong-review는 서비스 A·B가 공유하는 화면(examStore.studyMode로 분기)이라
+            단일 serviceKey를 물릴 수 없음 — 진입점(/service-a, /service-b)에서 게이트. GEPv30-121 참조 */}
         <Route path="/question" element={protectedPage(<Question />)} />
         <Route path="/result" element={protectedPage(<Result />)} />
         <Route path="/wrong-review" element={protectedPage(<WrongReview />)} />
-        <Route path="/ox" element={protectedPage(<OXHome />)} />
-        <Route path="/ox/stats" element={protectedPage(<OXStats />)} />
-        <Route path="/ox/:subjectKey" element={protectedPage(<OXSubject />)} />
-        <Route path="/ox/:subjectKey/:subSubject" element={protectedPage(<OXQuiz />)} />
-        <Route path="/ox/:subjectKey/:subSubject/review" element={protectedPage(<OXReview />)} />
-        <Route path="/mock" element={protectedPage(<MockExamHome />)} />
-        <Route path="/mock/:round/:part" element={protectedPage(<MockExamQuiz />)} />
-        <Route path="/mock/:round/:part/result" element={protectedPage(<MockExamResult />)} />
-        <Route path="/mock/:round/result" element={protectedPage(<MockExamResult />)} />
-        <Route path="/mock/:round/break" element={protectedPage(<MockExamBreak />)} />
-        <Route path="/mock/stats" element={protectedPage(<MockExamStats />)} />
-        <Route path="/custom-mock" element={protectedPage(<CustomMockHome />)} />
-        <Route path="/custom-mock/:sessionId/part1" element={protectedPage(<CustomMockQuiz />)} />
-        <Route path="/custom-mock/:sessionId/part2" element={protectedPage(<CustomMockQuiz />)} />
-        <Route path="/custom-mock/:sessionId/result" element={protectedPage(<CustomMockResult />)} />
-        <Route path="/custom-mock/stats" element={protectedPage(<CustomMockStats />)} />
-        <Route path="/unified-wrong" element={protectedPage(<UnifiedWrongReview />)} />
-        <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />)} />
-        <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />)} />
-        <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />)} />
+        <Route path="/ox" element={protectedPage(<OXHome />, { serviceKey: 'OX' })} />
+        <Route path="/ox/stats" element={protectedPage(<OXStats />, { serviceKey: 'OX' })} />
+        <Route path="/ox/:subjectKey" element={protectedPage(<OXSubject />, { serviceKey: 'OX' })} />
+        <Route path="/ox/:subjectKey/:subSubject" element={protectedPage(<OXQuiz />, { serviceKey: 'OX' })} />
+        <Route path="/ox/:subjectKey/:subSubject/review" element={protectedPage(<OXReview />, { serviceKey: 'OX' })} />
+        <Route path="/mock" element={protectedPage(<MockExamHome />, { serviceKey: 'MOCK_EXAM' })} />
+        <Route path="/mock/:round/:part" element={protectedPage(<MockExamQuiz />, { serviceKey: 'MOCK_EXAM' })} />
+        <Route path="/mock/:round/:part/result" element={protectedPage(<MockExamResult />, { serviceKey: 'MOCK_EXAM' })} />
+        <Route path="/mock/:round/result" element={protectedPage(<MockExamResult />, { serviceKey: 'MOCK_EXAM' })} />
+        <Route path="/mock/:round/break" element={protectedPage(<MockExamBreak />, { serviceKey: 'MOCK_EXAM' })} />
+        <Route path="/mock/stats" element={protectedPage(<MockExamStats />, { serviceKey: 'MOCK_EXAM' })} />
+        <Route path="/custom-mock" element={protectedPage(<CustomMockHome />, { serviceKey: 'CUSTOM_MOCK' })} />
+        <Route path="/custom-mock/:sessionId/part1" element={protectedPage(<CustomMockQuiz />, { serviceKey: 'CUSTOM_MOCK' })} />
+        <Route path="/custom-mock/:sessionId/part2" element={protectedPage(<CustomMockQuiz />, { serviceKey: 'CUSTOM_MOCK' })} />
+        <Route path="/custom-mock/:sessionId/result" element={protectedPage(<CustomMockResult />, { serviceKey: 'CUSTOM_MOCK' })} />
+        <Route path="/custom-mock/stats" element={protectedPage(<CustomMockStats />, { serviceKey: 'CUSTOM_MOCK' })} />
+        <Route path="/unified-wrong" element={protectedPage(<UnifiedWrongReview />, { serviceKey: 'UNIFIED_WRONG' })} />
+        <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />, { serviceKey: 'UNIFIED_WRONG' })} />
+        <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />, { serviceKey: 'UNIFIED_WRONG' })} />
+        <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />)} />
         <Route path="/settings" element={protectedPage(<Settings />)} />
-        <Route path="/mini-mock" element={protectedPage(<MiniMockHome />)} />
-        <Route path="/mini-mock/:setId" element={protectedPage(<MiniMockQuiz />)} />
-        <Route path="/mini-mock/:setId/result" element={protectedPage(<MiniMockResult />)} />
+        <Route path="/mini-mock" element={protectedPage(<MiniMockHome />, { serviceKey: 'MINI_MOCK' })} />
+        <Route path="/mini-mock/:setId" element={protectedPage(<MiniMockQuiz />, { serviceKey: 'MINI_MOCK' })} />
+        <Route path="/mini-mock/:setId/result" element={protectedPage(<MiniMockResult />, { serviceKey: 'MINI_MOCK' })} />
       </Routes>
     </BrowserRouter>
   )
