@@ -66,6 +66,19 @@ npm run build
 
 `MINI_MOCK`, `MOCK_EXAM` 서비스 플래그가 현재 `false`(비활성)로 게이트되어 있어, 일반 계정으로는 `/mini-mock/stats`·`/mock/stats` 화면에 진입할 수 없습니다. 로그인·클릭 조작은 안전 원칙상 제가 직접 수행할 수 없어(자격 증명 입력 금지), 코드 정합성 검토(props 계약, import 경로, 라우팅)와 빌드 통과까지만 자체 확인했습니다. 실제 화면 렌더링은 이전 T-1~T-9 체크리스트와 동일하게 조대표 계정(관리자 우회) 클릭 확인이 필요합니다.
 
+### ⚠️ MockExamStats WeaknessHeatmap — examStore cold start 검증 필요 (조대표 지적, T-10 추가)
+
+`examStore.questions`를 클라이언트 조인에 사용했으므로, `MockExamStats` 페이지 진입 시 `examStore`에 questions가 로드되어 있는지 여부가 관건입니다. 기출모의고사를 한 번도 시작하지 않은 상태(store 초기화)에서 직접 `/mock/stats`로 진입하면 조인 대상이 없어 WeaknessHeatmap이 빈 데이터로 렌더될 수 있습니다.
+
+```
+⚠️ MockExamStats WeaknessHeatmap — examStore cold start 검증 필요
+- MOCK_EXAM 플래그 개방 시 실계정에서 아래 2가지 경로로 확인 요청:
+  1) 기출모의고사 1회 이상 완료 후 /mock/stats 진입 → 히트맵 정상 렌더
+  2) 신규 로그인(examStore 초기화) 후 /mock/stats 직접 URL 진입 → 빈 화면 여부
+```
+
+**참고:** `App.jsx`가 앱 진입 시 `loadQuestions()`를 1회 호출해 `examStore.questions`를 채우므로(라우트 진입 여부와 무관하게 앱 마운트 시점에 로드), 이론상 경로 2)도 정상 렌더될 가능성이 높습니다. 다만 로드가 비동기이고 완료 시점 보장이 코드 레벨에서 확인되지 않아 **실계정 T-10 라이브 테스트로 확정이 필요**합니다.
+
 ---
 
 ## 6. 배포 상태
