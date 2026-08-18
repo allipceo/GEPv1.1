@@ -54,8 +54,8 @@ dist/assets/index-BnplgGHT.js  676.22 kB │ gzip: 186.77 kB
 
 ## 6. 배포 결과
 
-- Commit: (아래 push 커밋 해시로 갱신)
-- Push 대상: `origin/main`
+- Commit: `67b2cd1`
+- Push: ✅ `origin/main` (`aadf518..67b2cd1`)
 - URL: https://gepv30.vercel.app
 
 ## 7. 검증 요청 (조대표 실계정)
