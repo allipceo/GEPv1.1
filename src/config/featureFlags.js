@@ -7,7 +7,7 @@
 // 🚨 긴급 롤백 스위치 (GEPv30-120) — true로 바꾸면 SERVICE_FLAGS
 //    전체를 무시하고 즉시 FULL SERVICE(전체 서비스 개방)로 복귀
 // ============================================================
-export const EMERGENCY_FULL_OPEN = false;
+export const EMERGENCY_FULL_OPEN = true;
 
 export const FEATURE_FLAGS = {
   STATS_MIN_LEVEL:          2,
