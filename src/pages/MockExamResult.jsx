@@ -137,7 +137,7 @@ function Part1Result({ round, scores, elapsedTime, navigate }) {
           onClick={() => navigate(`/mock/${round}/break`)}
           className="w-full py-3.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
         >
-          ☕ 15분 휴식 후 2교시
+          ☕ 20분 휴식 후 2교시
         </button>
         <button
           onClick={() => navigate(`/mock/${round}/part2`)}

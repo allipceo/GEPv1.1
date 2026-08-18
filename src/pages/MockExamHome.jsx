@@ -219,9 +219,9 @@ export default function MockExamHome() {
       <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 flex flex-col gap-1.5">
         <p className="text-xs font-bold text-indigo-700">시험 구조</p>
         <div className="flex gap-3 text-xs text-indigo-600">
-          <span>📘 1교시 법령 · 40문제 · 40분</span>
+          <span>📘 1교시 법령 · 40문제 · 60분</span>
           <span className="text-indigo-300">|</span>
-          <span>📗📕 2교시 손보 · 80문제 · 80분</span>
+          <span>📗📕 2교시 손보 · 80문제 · 100분</span>
         </div>
         <p className="text-xs text-indigo-400">합격 기준: 과목당 40점 이상 · 전체 평균 60점 이상</p>
       </div>

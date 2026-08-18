@@ -15,7 +15,7 @@ export const mockExamConfig = {
       name: '1교시 법령',
       subject: '법령',
       questionCount: 40,
-      timeLimit: 40 * 60, // 40분 (초 단위)
+      timeLimit: 60 * 60, // 60분 (초 단위) — GEPv30-132: 공고 기준 정정
       color: 'blue-600',
       emoji: '📘'
     },
@@ -23,14 +23,14 @@ export const mockExamConfig = {
       name: '2교시 손보',
       subjects: ['손보1부', '손보2부'],
       questionCount: 80, // 1부 40 + 2부 40
-      timeLimit: 80 * 60, // 80분 (초 단위)
+      timeLimit: 100 * 60, // 100분 (초 단위) — GEPv30-132: 공고 기준 정정
       colors: ['green-600', 'purple-600'],
       emojis: ['📗', '📕']
     }
   },
 
   // 휴식 시간
-  breakTime: 15 * 60, // 15분 (초 단위)
+  breakTime: 20 * 60, // 20분 (초 단위) — GEPv30-132: 공고 기준 정정
 
   // 합격 기준
   passCriteria: {
