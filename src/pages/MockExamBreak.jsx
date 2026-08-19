@@ -101,7 +101,7 @@ export default function MockExamBreak() {
 
         <p className="text-sm text-gray-500 text-center leading-relaxed">
           잠시 쉬어가세요.<br />
-          2교시는 손보1부 + 손보2부 80문제, 100분입니다.
+          2교시는 손보1부 + 손보2부 80문제, 80분입니다.
         </p>
       </div>
 

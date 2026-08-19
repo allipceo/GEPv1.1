@@ -17,10 +17,10 @@ export const customMockConfig = {
   },
 
   // ── 교시별 타이머 (초 단위) ───────────────────────────────────────────────────
-  // GEPv30-132: 공고 기준 정정 (60분/100분, SHORT는 FULL × 0.8)
+  // GEPv30-134: 1문제당1분 원칙으로 정정 (40분/80분, SHORT는 FULL × 0.8)
   timers: {
-    full:  { part1: 60 * 60, part2: 100 * 60 },  // 3600s / 6000s
-    short: { part1: 48 * 60, part2: 80 * 60 },   // 2880s / 4800s (80%)
+    full:  { part1: 40 * 60, part2: 80 * 60 },   // 2400s / 4800s
+    short: { part1: 32 * 60, part2: 64 * 60 },   // 1920s / 3840s (80%)
   },
 
   // ── 교시 구조 ────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export const customMockConfig = {
 
   // ── 기타 설정 ─────────────────────────────────────────────────────────────────
   autoSaveInterval: 10,         // 10문제마다 자동 저장
-  breakTime:        15 * 60,    // 교시 간 휴식 15분 (초)
+  breakTime:        20 * 60,    // 교시 간 휴식 20분 (초) — GEPv30-134
   studyMode:        'custom_mock',
   minLevel:         5,          // featureFlags: CUSTOMMOCK_MIN_LEVEL
 };

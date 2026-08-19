@@ -1,6 +1,6 @@
 /**
  * src/pages/MiniMockQuiz.jsx — /mini-mock/:setId
- * 간이 모의고사 문제 풀기 화면 (30문제 연속 풀이 + 40분 절대 시간 타이머)
+ * 간이 모의고사 문제 풀기 화면 (30문제 연속 풀이 + 30분 절대 시간 타이머)
  * GEPv30-109 STEP 7 (+ GEPv30-110 isSubmitting 가드 반영)
  *
  * CustomMockQuiz.jsx 패턴 재활용 — 교시 분할 없음, 팔레트 없음, 단일 연속 흐름.

@@ -391,7 +391,7 @@ export default function Home() {
           <span className="text-2xl">⏱️</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-cyan-800">간이 모의고사</p>
-            <p className="text-xs text-cyan-500 mt-0.5">30문제 · 40분 · 빠른 실전 연습</p>
+            <p className="text-xs text-cyan-500 mt-0.5">30문제 · 30분 · 빠른 실전 연습</p>
           </div>
           {isLocked('MINI_MOCK') && <span className="text-gray-400 text-lg">🔒</span>}
           <span className="text-gray-300 text-lg">›</span>

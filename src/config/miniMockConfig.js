@@ -4,7 +4,7 @@
 const miniMockConfig = {
   studyMode:      'mini_mock',
   totalQuestions: 30,
-  timeLimit:      2400,   // 40분 (초)
+  timeLimit:      1800,   // 30분 (초) — GEPv30-134: 1문제당1분 원칙으로 정정
   setCount:       30,
 
   subjectQuota: {   // 3대 과목별 문제 수 (채점 기준)

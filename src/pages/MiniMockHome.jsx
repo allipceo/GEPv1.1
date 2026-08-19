@@ -130,7 +130,7 @@ export default function MiniMockHome() {
 
       <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 flex flex-col gap-1">
         <p className="text-xs font-bold text-indigo-700">간이 모의고사 안내</p>
-        <p className="text-xs text-indigo-600">30문제 · 40분 · 3대 과목 비율 유지</p>
+        <p className="text-xs text-indigo-600">30문제 · 30분 · 3대 과목 비율 유지</p>
         <p className="text-xs text-indigo-400">합격 기준: 과목당 40점 이상 · 전체 평균 60점 이상</p>
       </div>
 
