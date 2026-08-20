@@ -90,14 +90,22 @@ const OX_STUDY_MODES = ['ox']
  *   정렬: wrong_count 내림차순
  *
  * @param {string} userId
+ * @param {{ bypassCache?: boolean }} [options]
+ *   bypassCache: true면 캐시가 살아있어도 무시하고 항상 attempts 원장을 새로 조회한다.
+ *   ChallengeMode.jsx처럼 "지금 이 순간의 진짜 오답목록"이 필요한 화면에서 사용 —
+ *   1시간 캐시가 살아있으면 세션 중 정답 처리한 문제가 재진입 시 그대로 다시 나타나는
+ *   문제가 있었다(GEPv30-141 원칙 10, GEPv30-144에서 발견).
  * @returns {Promise<Array>}
  */
-export async function fetchAllWrongQuestions(userId) {
+export async function fetchAllWrongQuestions(userId, options = {}) {
   if (!userId) return []
+  const { bypassCache = false } = options
 
-  // 캐시 히트
-  const cached = getCachedWrongQuestions(userId)
-  if (cached) return cached
+  // 캐시 히트 (bypassCache=true면 건너뛰고 항상 새로 조회)
+  if (!bypassCache) {
+    const cached = getCachedWrongQuestions(userId)
+    if (cached) return cached
+  }
 
   try {
     // ── 4개 소스 병렬 조회 ──────────────────────────────────────────────

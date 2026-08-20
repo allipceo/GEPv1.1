@@ -26,7 +26,7 @@ import useStatsStore                      from '../stores/statsStore'
 import { recordAttempt }                  from '../services/statsService'
 import { oxService }                      from '../services/oxService'
 import {
-  getCachedWrongQuestions,
+  fetchAllWrongQuestions,
   filterByWrongCount,
   reclassifyResults,
 }  from '../services/unifiedWrongService'
@@ -217,15 +217,20 @@ export default function ChallengeMode() {
   const [results,       setResults]       = useState([])        // [{id, source, isCorrect}]
   const [isReclassing,  setIsReclassing]  = useState(false)
 
-  // ── 문제 로드 (캐시 우선) ────────────────────────────────────────────────
+  // ── 문제 로드 (항상 최신 원장 기준) ──────────────────────────────────────
+  // 2026-08-20: 이전에는 캐시(getCachedWrongQuestions)만 읽었다 — 캐시가 없으면
+  // (만료·최초방문 등) 실제로는 오답이 있어도 0문제로 표시되는 버그가 있었고,
+  // 캐시가 살아있으면(1시간 TTL) 세션 중 정답 처리한 문제가 재진입 시 그대로
+  // 다시 나타나는 문제가 있었다(GEPv30-141 원칙 10). bypassCache로 항상 최신
+  // attempts 원장 기준 목록을 가져오도록 전환 — 이 화면은 "지금 이 순간 진짜
+  // 틀린 문제"를 보여줘야 하는 화면이라 캐시를 신뢰할 수 없다.
   useEffect(() => {
     if (authStatus === 'loading' || !userId) return
 
     let cancelled = false
 
     async function load() {
-      const cached = getCachedWrongQuestions(userId)
-      const pool   = cached ?? []
+      const pool    = await fetchAllWrongQuestions(userId, { bypassCache: true })
       const byCount = filterByWrongCount(pool, minCount)
 
       // GEPv30-138: subjectFilter/sourceFilter/exactCount는 각각 null이면 무시 —
