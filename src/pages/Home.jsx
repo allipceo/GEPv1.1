@@ -75,17 +75,20 @@ export default function Home() {
   // 최근 10회 정답률 — 누적 정답률(avgAccuracy/OX 카드)만으로는 "최근에 잘하고 있는지"를
   // 알 수 없어 원장(attempts)에서 가장 최근 10건을 직접 조회해 별도 표시한다
   // (GEPv30-141 통찰보고서 원칙 11: 전체누적과 최근 시도는 구분되어야 함).
-  const [recentMcqAccuracy, setRecentMcqAccuracy] = useState(null)
-  const [recentOxAccuracy, setRecentOxAccuracy] = useState(null)
+  // { accuracy, count } — count가 10 미만이면 "최근10회"가 아니라 "최근{count}회"로
+  // 표시해야 함(2026-08-21, 선과장 검토의견 §2.4 — 10회 미만인데 "최근10회"로 고정
+  // 표시하면 실제로는 3문제만 풀고 100%가 나와도 "10회 기준"으로 오해할 수 있음).
+  const [recentMcq, setRecentMcq] = useState(null)
+  const [recentOx,  setRecentOx]  = useState(null)
 
   useEffect(() => {
     if (authStatus !== 'authenticated' || !userId) return
 
     const RECENT_N = 10
-    const calcAccuracy = (rows) => {
+    const calcRecent = (rows) => {
       if (!rows || rows.length === 0) return null
       const correct = rows.filter((r) => r.is_correct).length
-      return Math.round((correct / rows.length) * 100)
+      return { accuracy: Math.round((correct / rows.length) * 100), count: rows.length }
     }
 
     supabase
@@ -97,7 +100,7 @@ export default function Home() {
       .limit(RECENT_N)
       .then(({ data, error }) => {
         if (error) { console.warn('[GEP] 최근 선택형 정답률 조회 실패:', error.message); return }
-        setRecentMcqAccuracy(calcAccuracy(data))
+        setRecentMcq(calcRecent(data))
       })
 
     supabase
@@ -109,7 +112,7 @@ export default function Home() {
       .limit(RECENT_N)
       .then(({ data, error }) => {
         if (error) { console.warn('[GEP] 최근 진위형 정답률 조회 실패:', error.message); return }
-        setRecentOxAccuracy(calcAccuracy(data))
+        setRecentOx(calcRecent(data))
       })
   }, [authStatus, userId, location.key])
 
@@ -310,8 +313,8 @@ export default function Home() {
             </div>
             <p className="text-xs text-gray-400 mt-1">
               누적 {avgAccuracy}%
-              {recentMcqAccuracy !== null && (
-                <span className="text-blue-400 ml-1">· 최근10회 {recentMcqAccuracy}%</span>
+              {recentMcq !== null && (
+                <span className="text-blue-400 ml-1">· 최근{recentMcq.count}회 {recentMcq.accuracy}%</span>
               )}
             </p>
           </div>
@@ -325,8 +328,8 @@ export default function Home() {
               <div className="h-1 bg-emerald-400 rounded-full" style={{ width: `${oxPct}%` }} />
             </div>
             <p className="text-xs text-gray-400 mt-1">
-              {recentOxAccuracy !== null ? (
-                <span className="text-emerald-500">최근10회 {recentOxAccuracy}%</span>
+              {recentOx !== null ? (
+                <span className="text-emerald-500">최근{recentOx.count}회 {recentOx.accuracy}%</span>
               ) : (
                 'OX 누적 풀이'
               )}
