@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
-import { MINI_PROGRESS_KEY, MINI_RESULT_KEY } from '../stores/miniMockStore'
+import useMiniMockStore, { MINI_PROGRESS_KEY, MINI_RESULT_KEY } from '../stores/miniMockStore'
 import miniMockConfig from '../config/miniMockConfig'
 
 // ── 세트별 상태 계산 (localStorage 기준) ──────────────────────────────────────
@@ -159,9 +159,10 @@ export default function MiniMockHome() {
               label: '처음부터 다시 풀기',
               className: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
               onClick: () => {
-                try {
-                  localStorage.removeItem(MINI_PROGRESS_KEY(dialogSetId))
-                } catch (_) {}
+                // store.clearProgress()는 로컬+DB(state_json) 양쪽을 모두 지운다 —
+                // 로컬만 지우면 DB에 남은 예전 진행분이 "이어풀기"로 되살아난다
+                // (GEPv30-145, 로컬/DB 중 최신 것을 신뢰하는 병합 로직 때문).
+                useMiniMockStore.getState().clearProgress(dialogSetId)
                 navigate(`/mini-mock/${dialogSetId}`)
               },
             },
@@ -183,9 +184,10 @@ export default function MiniMockHome() {
               label: '다시 도전하기',
               className: 'bg-indigo-600 text-white hover:bg-indigo-700',
               onClick: () => {
-                try {
-                  localStorage.removeItem(MINI_PROGRESS_KEY(dialogSetId))
-                } catch (_) {}
+                // store.clearProgress()는 로컬+DB(state_json) 양쪽을 모두 지운다 —
+                // 로컬만 지우면 DB에 남은 예전 진행분이 "이어풀기"로 되살아난다
+                // (GEPv30-145, 로컬/DB 중 최신 것을 신뢰하는 병합 로직 때문).
+                useMiniMockStore.getState().clearProgress(dialogSetId)
                 navigate(`/mini-mock/${dialogSetId}`)
               },
             },

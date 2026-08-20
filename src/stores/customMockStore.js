@@ -7,6 +7,8 @@
 
 import { create } from 'zustand'
 import customMockConfig from '../config/customMockConfig'
+import { useAuthStore } from './authStore'
+import { genericProgressService } from '../services/genericProgressService'
 import {
   generateQuestions,
   calculateScore,
@@ -16,6 +18,12 @@ import {
   CUSTOM_SESSION_LS_KEY,
   customMockSupabase,
 } from '../services/customMockService'
+
+// 2026-08-20: localStorage 전용이라 기기를 바꾸면 진행 중이던 교시가 사라지던
+// 문제를 genericProgressService(progress.state_json)로 보완. supabaseSessionId가
+// 이미 서버에 세션을 식별하는 키로 존재하므로 이를 그대로 filter_key에 사용한다
+// (sessionLocalId는 기기별 타임스탬프라 다른 기기에서는 재사용 불가 — GEPv30-145).
+const remoteFilterKey = (supabaseSessionId, part) => `custom:${supabaseSessionId}:${part}`
 
 // ─────────────────────────────────────────────────────────────────────────────
 // localStorage 헬퍼
@@ -44,29 +52,64 @@ export function loadPersistedSession() {
 
 function saveProgress(sessionLocalId, part, store) {
   if (!store.startTime) return
+  const payload = {
+    answers:      store.answers,
+    currentIndex: store.currentIndex,
+    elapsedTime:  store.getElapsedTime(),
+    savedAt:      Date.now(),
+  }
   try {
-    localStorage.setItem(CUSTOM_PROGRESS_LS_KEY(sessionLocalId, part), JSON.stringify({
-      answers:      store.answers,
-      currentIndex: store.currentIndex,
-      elapsedTime:  store.getElapsedTime(),
-    }))
+    localStorage.setItem(CUSTOM_PROGRESS_LS_KEY(sessionLocalId, part), JSON.stringify(payload))
   } catch (_) {}
+
+  // supabaseSessionId가 아직 생성 안 됐으면(createSession 응답 전) DB 저장은 건너뛴다 —
+  // 로컬 저장은 이미 완료했으므로 같은 기기에서는 정상 동작한다.
+  if (!store.supabaseSessionId) return
+  const authState = useAuthStore.getState()
+  genericProgressService
+    .saveState(authState, remoteFilterKey(store.supabaseSessionId, part), payload)
+    .catch(() => {})
 }
 
-export function loadProgress(sessionLocalId, part) {
+/**
+ * 로컬/DB 중 더 최신 저장분을 반환(savedAt 비교).
+ * supabaseSessionId가 있어야 DB 조회가 가능하다 — 같은 세션의 sessionMeta가
+ * 로컬에 남아있는 경우(동일 기기, localStorage 진행분만 유실)를 커버한다.
+ * 완전히 다른 기기에서 이어하기(세션메타 자체 복원)는 별도 UI가 필요해
+ * 이번 범위에는 포함하지 않는다(GEPv30-145).
+ */
+export async function loadProgress(sessionLocalId, part, supabaseSessionId = null) {
+  let local = null
   try {
-    return JSON.parse(
+    local = JSON.parse(
       localStorage.getItem(CUSTOM_PROGRESS_LS_KEY(sessionLocalId, part)) || 'null'
     )
-  } catch {
-    return null
-  }
+  } catch { local = null }
+
+  if (!supabaseSessionId) return local
+
+  const authState = useAuthStore.getState()
+  const remote = await genericProgressService
+    .loadState(authState, remoteFilterKey(supabaseSessionId, part))
+    .catch(() => null)
+
+  if (!remote?.state) return local
+  if (!local) return remote.state
+
+  const localSavedAt  = local.savedAt ?? 0
+  const remoteSavedAt = remote.state.savedAt ?? new Date(remote.updatedAt).getTime()
+  return remoteSavedAt > localSavedAt ? remote.state : local
 }
 
-function clearProgress(sessionLocalId, part) {
+function clearProgress(sessionLocalId, part, supabaseSessionId = null) {
   try {
     localStorage.removeItem(CUSTOM_PROGRESS_LS_KEY(sessionLocalId, part))
   } catch (_) {}
+  if (!supabaseSessionId) return
+  const authState = useAuthStore.getState()
+  genericProgressService
+    .clearState(authState, remoteFilterKey(supabaseSessionId, part))
+    .catch(() => {})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -307,7 +350,7 @@ export const useCustomMockStore = create((set, get) => ({
     saveResult(state.sessionLocalId, 'part1', { scores, elapsedTime })
 
     // 진행 데이터 클리어
-    clearProgress(state.sessionLocalId, 'part1')
+    clearProgress(state.sessionLocalId, 'part1', state.supabaseSessionId)
 
     // Supabase fire-and-forget
     if (userId && state.supabaseSessionId) {
@@ -355,7 +398,7 @@ export const useCustomMockStore = create((set, get) => ({
     saveResult(state.sessionLocalId, 'part2', { scores, elapsedTime })
 
     // 진행 데이터 클리어
-    clearProgress(state.sessionLocalId, 'part2')
+    clearProgress(state.sessionLocalId, 'part2', state.supabaseSessionId)
 
     // Supabase fire-and-forget
     if (userId && state.supabaseSessionId) {

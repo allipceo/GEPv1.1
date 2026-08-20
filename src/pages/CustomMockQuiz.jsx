@@ -215,14 +215,23 @@ export default function CustomMockQuiz() {
       return
     }
 
-    const progress = loadProgress(sessionMeta.sessionLocalId, part)
-    resumeSession(
-      sessionMeta,
-      part,
-      progress?.answers      ?? {},
-      progress?.currentIndex ?? 0,
-      progress?.elapsedTime  ?? 0,
-    )
+    async function init() {
+      // supabaseSessionId를 함께 넘기면 로컬 진행분이 유실됐어도(브라우저 데이터
+      // 일부 삭제 등) DB에 저장된 최신 진행상황으로 복원한다(GEPv30-145).
+      const progress = await loadProgress(
+        sessionMeta.sessionLocalId,
+        part,
+        sessionMeta.supabaseSessionId
+      )
+      resumeSession(
+        sessionMeta,
+        part,
+        progress?.answers      ?? {},
+        progress?.currentIndex ?? 0,
+        progress?.elapsedTime  ?? 0,
+      )
+    }
+    init()
   }, [])
 
   // ── 타이머 (1초마다) ────────────────────────────────────────────────────────

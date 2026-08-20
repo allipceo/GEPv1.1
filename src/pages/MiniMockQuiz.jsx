@@ -131,7 +131,7 @@ export default function MiniMockQuiz() {
         navigate('/mini-mock')
         return
       }
-      const progress = store.loadProgress(Number(setId))
+      const progress = await store.loadProgress(Number(setId))
       store.startSet(Number(setId), set.questions, progress)
     }
     init()
