@@ -29,6 +29,7 @@ import CustomMockQuiz from './pages/CustomMockQuiz'
 import CustomMockResult from './pages/CustomMockResult'
 import CustomMockStats from './pages/CustomMockStats'
 import UnifiedWrongReview from './pages/UnifiedWrongReview'
+import WrongSubjectSelector from './pages/WrongSubjectSelector'
 import ChallengeMode       from './pages/ChallengeMode'
 import ChallengeResult     from './pages/ChallengeResult'
 import ProgressTracker     from './pages/ProgressTracker'
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="/custom-mock/:sessionId/result" element={protectedPage(<CustomMockResult />, { serviceKey: 'CUSTOM_MOCK' })} />
         <Route path="/custom-mock/stats" element={protectedPage(<CustomMockStats />, { serviceKey: 'CUSTOM_MOCK' })} />
         <Route path="/unified-wrong" element={protectedPage(<UnifiedWrongReview />, { serviceKey: 'UNIFIED_WRONG' })} />
+        <Route path="/unified-wrong/subjects" element={protectedPage(<WrongSubjectSelector />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />, { serviceKey: 'UNIFIED_WRONG' })} />

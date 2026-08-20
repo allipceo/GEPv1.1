@@ -194,6 +194,19 @@ export default function WrongReview() {
         {/* 헤더 */}
         <AppHeader title="오답 복습" />
 
+        {/* GEPv30-136: 통합 오답 복습 유도 배너 — OX 포함, 세부과목/반복오답 기준 복습 지원 */}
+        <button
+          onClick={() => navigate('/unified-wrong')}
+          className="w-full flex items-center justify-between gap-2 rounded-xl
+            bg-indigo-50 border border-indigo-100 px-4 py-3 text-left
+            hover:bg-indigo-100 active:bg-indigo-200 transition-colors"
+        >
+          <span className="text-xs text-indigo-700">
+            💡 OX 오답까지 함께 보려면 <span className="font-bold">통합 오답 복습</span>을 이용하세요
+          </span>
+          <span className="text-indigo-400 text-xs shrink-0">이동 →</span>
+        </button>
+
         {allWrongQuestions.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 px-6">
             <p className="text-2xl">🎉</p>

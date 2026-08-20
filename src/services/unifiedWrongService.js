@@ -85,7 +85,8 @@ const OX_STUDY_MODES = ['ox']
  *               (해결/미해결 개념 없이 시도 자체를 누적 카운트 — 기존 방식 유지)
  *
  * 반환 형태:
- *   [{ id, source: 'MCQ'|'OX'|'MOCK'|'CUSTOM', wrong_count, last_wrong_at? }]
+ *   [{ id, source: 'MCQ'|'OX'|'MOCK'|'CUSTOM', wrong_count, last_wrong_at?, subject?, sub_subject? }]
+ *   subject/sub_subject는 MCQ/OX만 제공(GEPv30-136, RPC 확장). MOCK/CUSTOM은 범위 제외(조대표 확정).
  *   정렬: wrong_count 내림차순
  *
  * @param {string} userId
@@ -120,6 +121,7 @@ export async function fetchAllWrongQuestions(userId) {
     // ── 클라이언트 병합 ───────────────────────────────────────────────────
 
     // MCQ: RPC 결과 중 최신 시도가 오답인 것(last_correct=false)만 활성 목록에 포함
+    // GEPv30-136: RPC가 subject/sub_subject를 반환하도록 확장(016 마이그레이션) — 그대로 전달
     const mcqItems = (mcqRes.data ?? [])
       .filter(q => q.last_correct === false)
       .map(q => ({
@@ -127,6 +129,8 @@ export async function fetchAllWrongQuestions(userId) {
         source:        'MCQ',
         wrong_count:   q.wrong_count,
         last_wrong_at: q.last_wrong_at,
+        subject:       q.subject     ?? null,
+        sub_subject:   q.sub_subject ?? null,
       }))
 
     // OX: 동일한 RPC, study_mode='ox'만
@@ -137,6 +141,8 @@ export async function fetchAllWrongQuestions(userId) {
         source:        'OX',
         wrong_count:   q.wrong_count,
         last_wrong_at: q.last_wrong_at,
+        subject:       q.subject     ?? null,
+        sub_subject:   q.sub_subject ?? null,
       }))
 
     // MOCK: mock_exam_attempts에서 is_correct=false 집계 (question_id별 카운트)

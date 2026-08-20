@@ -100,9 +100,26 @@ export default function UnifiedWrongReview() {
     .filter(q => selectedSource === 'ALL' || q.source === selectedSource)
     .filter(q => selectedSub    === 'ALL' || q.sub_subject === selectedSub)
 
+  // GEPv30-136 Must: 가장 많이 틀린 세부과목 (MCQ+OX만 — sub_subject 있는 항목)
+  const weakestSubject = (() => {
+    const counts = {}
+    for (const q of questions) {
+      if (!q.sub_subject) continue
+      counts[q.sub_subject] = (counts[q.sub_subject] ?? 0) + 1
+    }
+    const entries = Object.entries(counts)
+    if (entries.length === 0) return null
+    const [name, count] = entries.sort((a, b) => b[1] - a[1])[0]
+    return { name, count }
+  })()
+
   // ── 핸들러 ─────────────────────────────────────────────────────────────────
   function handleStudy(minCount) {
     navigate(`/unified-wrong/challenge/${minCount}`)
+  }
+
+  function handleStudySubject(subject) {
+    navigate(`/unified-wrong/challenge/1`, { state: { subject } })
   }
 
   function handleRetry(question) {
@@ -137,8 +154,16 @@ export default function UnifiedWrongReview() {
           </span>
         )}
         <button
-          onClick={() => navigate('/unified-wrong/progress')}
+          onClick={() => navigate('/unified-wrong/subjects')}
           className="ml-auto flex items-center gap-1 text-xs text-indigo-500 font-semibold
+            hover:text-indigo-700 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50"
+          aria-label="세부과목별 복습"
+        >
+          🎯 세부과목별
+        </button>
+        <button
+          onClick={() => navigate('/unified-wrong/progress')}
+          className="flex items-center gap-1 text-xs text-indigo-500 font-semibold
             hover:text-indigo-700 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50"
           aria-label="학습 진행도 확인"
         >
@@ -178,6 +203,21 @@ export default function UnifiedWrongReview() {
               ({highPriority}문제)
             </span>
           </button>
+
+          {/* ── 가장 많이 틀린 세부과목부터 복습 (GEPv30-136 Must) ────────── */}
+          {weakestSubject && (
+            <button
+              onClick={() => handleStudySubject(weakestSubject.name)}
+              className="w-full py-3 rounded-2xl bg-indigo-50 border border-indigo-100
+                text-indigo-700 text-sm font-bold flex items-center justify-center gap-2
+                hover:bg-indigo-100 active:bg-indigo-200 transition-colors"
+            >
+              🎯 가장 많이 틀린 <span className="font-extrabold">{weakestSubject.name}</span>부터 복습
+              <span className="text-xs font-normal text-indigo-400">
+                ({weakestSubject.count}문제)
+              </span>
+            </button>
+          )}
 
           {/* ── D-Day 학습 플랜 ───────────────────────────────────────────── */}
           <div className="flex flex-col gap-2">

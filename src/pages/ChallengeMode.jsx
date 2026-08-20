@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams }         from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useAuthStore }                   from '../stores/authStore'
 import useExamStore                       from '../stores/examStore'
 import useStatsStore                      from '../stores/statsStore'
@@ -30,6 +30,7 @@ import {
   filterByWrongCount,
   reclassifyResults,
 }  from '../services/unifiedWrongService'
+import { OX_SUBJECTS }         from '../config/oxSubjects'
 import WrongCountBadge         from '../components/wrong/WrongCountBadge'
 import ReclassificationAnimation from '../components/wrong/ReclassificationAnimation'
 
@@ -41,20 +42,36 @@ const SUBJECT_BG     = {
   '손보2부': 'bg-purple-600',
 }
 const SOURCE_LABEL   = { MCQ: 'MCQ', OX: 'OX', MOCK: '모의', CUSTOM: '맞춤' }
+// attempts.subject는 OX의 경우 짧은 키('law'|'p1'|'p2')로 저장된다(oxStore.js) — 표시용 한글 라벨 매핑
+const OX_SUBJECT_LABEL = Object.fromEntries(OX_SUBJECTS.map(s => [s.key, s.label]))
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
 /** wrong 아이템 + examStore 문제 조인 */
 function enrichQuestion(wrongItem, examQuestions) {
+  if (wrongItem.source === 'OX') {
+    // GEPv30-136: RPC가 이미 subject/sub_subject를 반환한다(016 마이그레이션) — 그대로 사용.
+    // ox_subject_key는 정답(ox_result) 조회용 원본 키('law'|'p1'|'p2'), subject는 표시용 한글 라벨.
+    return {
+      ...wrongItem,
+      questionRaw:    null,
+      answer:         null,
+      ox_subject_key: wrongItem.subject ?? null,
+      subject:        OX_SUBJECT_LABEL[wrongItem.subject] ?? wrongItem.subject ?? null,
+      subSubject:     wrongItem.sub_subject ?? null,
+      isOX:           true,
+      ox_result:      null,   // loadOxResultMap()이 비동기로 채운다
+    }
+  }
+
   const base = {
     ...wrongItem,
-    questionRaw:  null,
-    answer:       null,
-    subject:      null,
-    subSubject:   null,
-    isOX:         wrongItem.source === 'OX',
+    questionRaw: null,
+    answer:      null,
+    subject:     wrongItem.subject     ?? null,
+    subSubject:  wrongItem.sub_subject ?? null,
+    isOX:        false,
   }
-  if (wrongItem.source === 'OX') return base   // OX: 원문 없이 O/X만 표시
 
   const found = examQuestions.find(q => q.id === wrongItem.id)
   if (!found) return base
@@ -63,8 +80,28 @@ function enrichQuestion(wrongItem, examQuestions) {
     ...base,
     questionRaw: found.questionRaw ?? null,
     answer:      found.answer      ?? null,
-    subject:     found.subject     ?? null,
-    subSubject:  found.subSubject  ?? null,
+    subject:     found.subject     ?? base.subject,
+    subSubject:  found.subSubject  ?? base.subSubject,
+  }
+}
+
+// ── OX 정답(ox_result) 조회 ──────────────────────────────────────────────────
+// attempts 원장에는 정답이 없으므로(선택값·정오답만 기록) 재도전 채점을 위해
+// 원본 OX 문제 JSON에서 ox_id → ox_result 맵을 조회한다. 세션 내 파일당 1회만 fetch.
+const oxResultCache = new Map()   // subjectKey → Map(ox_id -> ox_result)
+
+async function loadOxResultMap(subjectKey) {
+  if (oxResultCache.has(subjectKey)) return oxResultCache.get(subjectKey)
+  const info = OX_SUBJECTS.find(s => s.key === subjectKey)
+  if (!info) return new Map()
+  try {
+    const res = await fetch(`/data/${info.file}`)
+    const all = await res.json()
+    const map = new Map(all.map(q => [q.ox_id, q.ox_result]))
+    oxResultCache.set(subjectKey, map)
+    return map
+  } catch {
+    return new Map()
   }
 }
 
@@ -157,8 +194,10 @@ function FeedbackBanner({ isCorrect, wrongCount, onNext, isLast }) {
 // ── 메인 컴포넌트 ──────────────────────────────────────────────────────────────
 export default function ChallengeMode() {
   const navigate      = useNavigate()
+  const location      = useLocation()
   const { minCount: minCountParam } = useParams()
   const minCount      = parseInt(minCountParam, 10) || 1
+  const subjectFilter = location.state?.subject ?? null   // GEPv30-136 모드①(세부과목 기준)
 
   const userId        = useAuthStore(s => s.userId)
   const authStatus    = useAuthStore(s => s.authStatus)
@@ -176,16 +215,45 @@ export default function ChallengeMode() {
   useEffect(() => {
     if (authStatus === 'loading' || !userId) return
 
-    const cached = getCachedWrongQuestions(userId)
-    const pool   = cached ?? []
-    const filtered = filterByWrongCount(pool, minCount)
+    let cancelled = false
 
-    // examStore 조인 (examQuestions 없으면 빈 배열)
-    const enriched = filtered.map(w => enrichQuestion(w, examQuestions))
-    setQuestions(enriched)
-  }, [authStatus, userId, minCount, examQuestions])
+    async function load() {
+      const cached = getCachedWrongQuestions(userId)
+      const pool   = cached ?? []
+      const byCount   = filterByWrongCount(pool, minCount)
+      const filtered  = subjectFilter
+        ? byCount.filter(q => q.sub_subject === subjectFilter)
+        : byCount
+
+      // examStore 조인 (examQuestions 없으면 빈 배열)
+      const enriched = filtered.map(w => enrichQuestion(w, examQuestions))
+
+      // OX 문제가 섞여 있으면 정답(ox_result) 맵을 비동기로 채운다
+      const oxSubjectKeys = [...new Set(
+        enriched.filter(q => q.isOX && q.ox_subject_key).map(q => q.ox_subject_key)
+      )]
+      if (oxSubjectKeys.length === 0) {
+        if (!cancelled) setQuestions(enriched)
+        return
+      }
+
+      const maps = await Promise.all(oxSubjectKeys.map(loadOxResultMap))
+      const combined = new Map()
+      maps.forEach(m => m.forEach((v, k) => combined.set(k, v)))
+
+      if (!cancelled) {
+        setQuestions(enriched.map(q =>
+          q.isOX ? { ...q, ox_result: combined.get(q.id) ?? null } : q
+        ))
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [authStatus, userId, minCount, subjectFilter, examQuestions])
 
   // ── 파생값 ──────────────────────────────────────────────────────────────
+  const modeTitle = subjectFilter ? `${subjectFilter} 복습` : `${minCount}회+ 도전`
   const current   = questions[currentIndex]
   const isLast    = currentIndex === questions.length - 1
   const passCount = results.filter(r => r.isCorrect).length
@@ -323,12 +391,12 @@ export default function ChallengeMode() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="text-lg font-bold text-gray-900">{minCount}회+ 도전</h1>
+          <h1 className="text-lg font-bold text-gray-900">{modeTitle}</h1>
         </div>
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <span className="text-4xl">🎉</span>
           <p className="text-base font-semibold text-gray-600">
-            {minCount}회 이상 오답이 없습니다!
+            {subjectFilter ? `${subjectFilter}에 남은 오답이 없습니다!` : `${minCount}회 이상 오답이 없습니다!`}
           </p>
           <p className="text-sm text-gray-400">열심히 공부한 결과입니다.</p>
           <button
@@ -355,14 +423,14 @@ export default function ChallengeMode() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="text-lg font-bold text-gray-900">{minCount}회+ 도전 모드</h1>
+          <h1 className="text-lg font-bold text-gray-900">{modeTitle} 모드</h1>
         </div>
 
         {/* 문제 수 카드 */}
         <div className="rounded-2xl bg-indigo-50 border border-indigo-100 px-5 py-5
           flex flex-col items-center gap-2">
           <p className="text-[11px] text-indigo-400 font-semibold uppercase tracking-wide">
-            {minCount}회 이상 오답
+            {subjectFilter ? subjectFilter : `${minCount}회 이상 오답`}
           </p>
           <p className="text-5xl font-bold text-indigo-700 tabular-nums">{questions.length}</p>
           <p className="text-sm text-indigo-500">문제</p>
@@ -429,7 +497,7 @@ export default function ChallengeMode() {
           ← 이전
         </button>
         <span className="text-sm font-bold text-white flex-1 text-center">
-          {minCount}회+ 도전
+          {modeTitle}
         </span>
         <button
           onClick={() => navigate('/')}
