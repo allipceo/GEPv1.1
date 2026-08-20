@@ -72,6 +72,47 @@ export default function Home() {
       })
   }, [authStatus, userId, location.key])
 
+  // 최근 10회 정답률 — 누적 정답률(avgAccuracy/OX 카드)만으로는 "최근에 잘하고 있는지"를
+  // 알 수 없어 원장(attempts)에서 가장 최근 10건을 직접 조회해 별도 표시한다
+  // (GEPv30-141 통찰보고서 원칙 11: 전체누적과 최근 시도는 구분되어야 함).
+  const [recentMcqAccuracy, setRecentMcqAccuracy] = useState(null)
+  const [recentOxAccuracy, setRecentOxAccuracy] = useState(null)
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !userId) return
+
+    const RECENT_N = 10
+    const calcAccuracy = (rows) => {
+      if (!rows || rows.length === 0) return null
+      const correct = rows.filter((r) => r.is_correct).length
+      return Math.round((correct / rows.length) * 100)
+    }
+
+    supabase
+      .from('attempts')
+      .select('is_correct')
+      .eq('user_id', userId)
+      .neq('study_mode', 'ox')
+      .order('attempted_at', { ascending: false })
+      .limit(RECENT_N)
+      .then(({ data, error }) => {
+        if (error) { console.warn('[GEP] 최근 선택형 정답률 조회 실패:', error.message); return }
+        setRecentMcqAccuracy(calcAccuracy(data))
+      })
+
+    supabase
+      .from('attempts')
+      .select('is_correct')
+      .eq('user_id', userId)
+      .eq('study_mode', 'ox')
+      .order('attempted_at', { ascending: false })
+      .limit(RECENT_N)
+      .then(({ data, error }) => {
+        if (error) { console.warn('[GEP] 최근 진위형 정답률 조회 실패:', error.message); return }
+        setRecentOxAccuracy(calcAccuracy(data))
+      })
+  }, [authStatus, userId, location.key])
+
   if (authStatus === 'guest') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -267,7 +308,12 @@ export default function Home() {
             <div className="h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
               <div className="h-1 bg-blue-400 rounded-full" style={{ width: `${mcqPct}%` }} />
             </div>
-            <p className="text-xs text-gray-400 mt-1">평균 {avgAccuracy}% 정답</p>
+            <p className="text-xs text-gray-400 mt-1">
+              누적 {avgAccuracy}%
+              {recentMcqAccuracy !== null && (
+                <span className="text-blue-400 ml-1">· 최근10회 {recentMcqAccuracy}%</span>
+              )}
+            </p>
           </div>
           <div className="rounded-2xl bg-white border border-gray-100 px-3 py-3">
             <p className="text-xs text-gray-400 mb-1"><span className="text-emerald-500 font-bold">■</span> 진위형</p>
@@ -278,7 +324,13 @@ export default function Home() {
             <div className="h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
               <div className="h-1 bg-emerald-400 rounded-full" style={{ width: `${oxPct}%` }} />
             </div>
-            <p className="text-xs text-gray-400 mt-1">OX 누적 풀이</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {recentOxAccuracy !== null ? (
+                <span className="text-emerald-500">최근10회 {recentOxAccuracy}%</span>
+              ) : (
+                'OX 누적 풀이'
+              )}
+            </p>
           </div>
         </div>
 
