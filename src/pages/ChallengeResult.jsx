@@ -50,7 +50,10 @@ export default function ChallengeResult() {
     wrongCount   = 0,
     subjectStats = [],
     minCount     = 5,
+    l2dContext   = null,   // GEPv30-138: { subject, source } — 세부과목→유형→정확한횟수 세션일 때만 존재
   } = result
+
+  const TYPE_LABEL_KO = { MCQ: '선택형', OX: '진위형' }
 
   const correctPct = beforeCount > 0 ? Math.round((correctCount / beforeCount) * 100) : 0
   const wrongPct   = 100 - correctPct
@@ -61,7 +64,11 @@ export default function ChallengeResult() {
       {/* ── 헤더 ──────────────────────────────────────────────────────────── */}
       <AppHeader title="챌린지 결과" backTo="/" />
       <div className="flex justify-end -mt-3">
-        <span className="text-xs text-gray-400">{minCount}회+ 모드</span>
+        <span className="text-xs text-gray-400">
+          {l2dContext
+            ? `${l2dContext.subject} · ${TYPE_LABEL_KO[l2dContext.source] ?? l2dContext.source} · 정확히 ${minCount >= 6 ? '6회 이상' : `${minCount}회`}`
+            : `${minCount}회+ 모드`}
+        </span>
       </div>
 
       {/* ── Before/After 시각화 ───────────────────────────────────────────── */}
@@ -91,26 +98,43 @@ export default function ChallengeResult() {
       <div className="flex flex-col gap-3">
         <p className="text-xs font-bold text-gray-500 px-1">다음 학습 제안</p>
 
-        {wrongCount > 0 && (
+        {l2dContext ? (
+          // GEPv30-138: 세부과목→유형→정확한횟수 세션 — 같은 세부과목·유형으로 돌아가
+          // 갱신된 틀린횟수 버킷에서 다시 고를 수 있게 한다(구 5회+/6회+ 버튼은 이 흐름과 무관).
           <button
-            onClick={() => navigate('/unified-wrong/challenge/6')}
-            className="w-full py-3.5 rounded-2xl bg-red-600 text-white text-sm font-bold
+            onClick={() => navigate(
+              `/wrong-review/count/${encodeURIComponent(l2dContext.subject)}/${l2dContext.source}`
+            )}
+            className="w-full py-3.5 rounded-2xl bg-orange-600 text-white text-sm font-bold
               flex items-center justify-center gap-2
-              hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm"
+              hover:bg-orange-700 active:bg-orange-800 transition-colors shadow-sm"
           >
-            🔥 6회+ 긴급 재도전
-            <span className="text-xs font-normal opacity-80">({wrongCount}개 오답)</span>
+            🎯 {l2dContext.subject} · {TYPE_LABEL_KO[l2dContext.source] ?? l2dContext.source} 계속 복습
           </button>
-        )}
+        ) : (
+          <>
+            {wrongCount > 0 && (
+              <button
+                onClick={() => navigate('/unified-wrong/challenge/6')}
+                className="w-full py-3.5 rounded-2xl bg-red-600 text-white text-sm font-bold
+                  flex items-center justify-center gap-2
+                  hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm"
+              >
+                🔥 6회+ 긴급 재도전
+                <span className="text-xs font-normal opacity-80">({wrongCount}개 오답)</span>
+              </button>
+            )}
 
-        <button
-          onClick={() => navigate('/unified-wrong/challenge/5')}
-          className="w-full py-3.5 rounded-2xl bg-indigo-600 text-white text-sm font-bold
-            flex items-center justify-center gap-2
-            hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
-        >
-          📚 5회+ 남은 문제 풀기
-        </button>
+            <button
+              onClick={() => navigate('/unified-wrong/challenge/5')}
+              className="w-full py-3.5 rounded-2xl bg-indigo-600 text-white text-sm font-bold
+                flex items-center justify-center gap-2
+                hover:bg-indigo-700 active:bg-indigo-800 transition-colors"
+            >
+              📚 5회+ 남은 문제 풀기
+            </button>
+          </>
+        )}
 
         <button
           onClick={() => navigate('/unified-wrong/progress')}

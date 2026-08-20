@@ -363,6 +363,11 @@ export default function ChallengeMode() {
           subjectStats: Object.values(subjectMap),
           minCount,
           timestamp:    Date.now(),
+          // GEPv30-138: L2-D(세부과목→유형→정확한횟수) 세션이면 컨텍스트를 보존해
+          // ChallengeResult.jsx가 "이어서 복습" 시 같은 세부과목/유형으로 되돌아갈 수 있게 한다.
+          l2dContext: (subjectFilter && sourceFilter && exactCount)
+            ? { subject: subjectFilter, source: sourceFilter }
+            : null,
         }))
 
         // 주간 세션 기록 — ProgressTracker.jsx 주간 차트용
