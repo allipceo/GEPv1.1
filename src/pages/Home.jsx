@@ -352,13 +352,13 @@ export default function Home() {
         {canUseCounting && (
           <button
             type="button"
-            onClick={() => navigate('/wrong-review')}
+            onClick={() => navigate('/wrong-review/subjects')}
             className="w-full flex items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3.5 text-left active:bg-orange-100"
           >
             <span className="text-2xl">✏️</span>
             <div className="flex-1">
               <p className="text-sm font-bold text-orange-800">틀린 문제 풀기</p>
-              <p className="text-xs text-orange-400 mt-0.5">MCQ 오답 복습</p>
+              <p className="text-xs text-orange-400 mt-0.5">세부과목·유형·횟수별 정밀 복습</p>
             </div>
             <span className="text-xs font-bold text-orange-300 bg-orange-100 px-1.5 py-0.5 rounded-full">L2-D</span>
             <span className="text-gray-300 text-lg">›</span>

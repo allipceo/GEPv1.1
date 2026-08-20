@@ -42,6 +42,7 @@ const SUBJECT_BG     = {
   '손보2부': 'bg-purple-600',
 }
 const SOURCE_LABEL   = { MCQ: 'MCQ', OX: 'OX', MOCK: '모의', CUSTOM: '맞춤' }
+const TYPE_LABEL_KO  = { MCQ: '선택형', OX: '진위형' }   // GEPv30-138 모드 타이틀용
 // attempts.subject는 OX의 경우 짧은 키('law'|'p1'|'p2')로 저장된다(oxStore.js) — 표시용 한글 라벨 매핑
 const OX_SUBJECT_LABEL = Object.fromEntries(OX_SUBJECTS.map(s => [s.key, s.label]))
 
@@ -197,7 +198,9 @@ export default function ChallengeMode() {
   const location      = useLocation()
   const { minCount: minCountParam } = useParams()
   const minCount      = parseInt(minCountParam, 10) || 1
-  const subjectFilter = location.state?.subject ?? null   // GEPv30-136 모드①(세부과목 기준)
+  const subjectFilter = location.state?.subject ?? null    // GEPv30-136 모드①(세부과목 기준)
+  const sourceFilter  = location.state?.source ?? null      // GEPv30-138: 'MCQ'|'OX' 유형 필터
+  const exactCount    = location.state?.exactCount ?? null  // GEPv30-138: 정확한 틀린횟수(6=6회+ 단일버킷)
 
   const userId        = useAuthStore(s => s.userId)
   const authStatus    = useAuthStore(s => s.authStatus)
@@ -220,10 +223,16 @@ export default function ChallengeMode() {
     async function load() {
       const cached = getCachedWrongQuestions(userId)
       const pool   = cached ?? []
-      const byCount   = filterByWrongCount(pool, minCount)
-      const filtered  = subjectFilter
-        ? byCount.filter(q => q.sub_subject === subjectFilter)
-        : byCount
+      const byCount = filterByWrongCount(pool, minCount)
+
+      // GEPv30-138: subjectFilter/sourceFilter/exactCount는 각각 null이면 무시 —
+      // 기존 L2-F 흐름(subjectFilter만 사용)의 동작은 그대로 유지된다.
+      let filtered = byCount
+      if (subjectFilter) filtered = filtered.filter(q => q.sub_subject === subjectFilter)
+      if (sourceFilter)  filtered = filtered.filter(q => q.source === sourceFilter)
+      if (exactCount)    filtered = filtered.filter(q =>
+        exactCount >= 6 ? (q.wrong_count ?? 1) >= 6 : (q.wrong_count ?? 1) === exactCount
+      )
 
       // examStore 조인 (examQuestions 없으면 빈 배열)
       const enriched = filtered.map(w => enrichQuestion(w, examQuestions))
@@ -250,10 +259,17 @@ export default function ChallengeMode() {
 
     load()
     return () => { cancelled = true }
-  }, [authStatus, userId, minCount, subjectFilter, examQuestions])
+  }, [authStatus, userId, minCount, subjectFilter, sourceFilter, exactCount, examQuestions])
 
   // ── 파생값 ──────────────────────────────────────────────────────────────
-  const modeTitle = subjectFilter ? `${subjectFilter} 복습` : `${minCount}회+ 도전`
+  const modeTitle = (() => {
+    if (subjectFilter && sourceFilter && exactCount) {
+      const countLabel = exactCount >= 6 ? '6회+' : `${exactCount}회`
+      return `${subjectFilter} · ${TYPE_LABEL_KO[sourceFilter] ?? sourceFilter} · ${countLabel}`
+    }
+    if (subjectFilter) return `${subjectFilter} 복습`
+    return `${minCount}회+ 도전`
+  })()
   const current   = questions[currentIndex]
   const isLast    = currentIndex === questions.length - 1
   const passCount = results.filter(r => r.isCorrect).length
@@ -396,7 +412,11 @@ export default function ChallengeMode() {
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <span className="text-4xl">🎉</span>
           <p className="text-base font-semibold text-gray-600">
-            {subjectFilter ? `${subjectFilter}에 남은 오답이 없습니다!` : `${minCount}회 이상 오답이 없습니다!`}
+            {subjectFilter && sourceFilter && exactCount
+              ? `${modeTitle}에 해당하는 오답이 없습니다!`
+              : subjectFilter
+                ? `${subjectFilter}에 남은 오답이 없습니다!`
+                : `${minCount}회 이상 오답이 없습니다!`}
           </p>
           <p className="text-sm text-gray-400">열심히 공부한 결과입니다.</p>
           <button
@@ -430,7 +450,9 @@ export default function ChallengeMode() {
         <div className="rounded-2xl bg-indigo-50 border border-indigo-100 px-5 py-5
           flex flex-col items-center gap-2">
           <p className="text-[11px] text-indigo-400 font-semibold uppercase tracking-wide">
-            {subjectFilter ? subjectFilter : `${minCount}회 이상 오답`}
+            {subjectFilter && sourceFilter && exactCount ? modeTitle
+              : subjectFilter ? subjectFilter
+              : `${minCount}회 이상 오답`}
           </p>
           <p className="text-5xl font-bold text-indigo-700 tabular-nums">{questions.length}</p>
           <p className="text-sm text-indigo-500">문제</p>

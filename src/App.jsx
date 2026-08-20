@@ -30,6 +30,9 @@ import CustomMockResult from './pages/CustomMockResult'
 import CustomMockStats from './pages/CustomMockStats'
 import UnifiedWrongReview from './pages/UnifiedWrongReview'
 import WrongSubjectSelector from './pages/WrongSubjectSelector'
+import WrongReviewSubjects      from './pages/WrongReviewSubjects'
+import WrongReviewTypeSelector  from './pages/WrongReviewTypeSelector'
+import WrongReviewCountSelector from './pages/WrongReviewCountSelector'
 import ChallengeMode       from './pages/ChallengeMode'
 import ChallengeResult     from './pages/ChallengeResult'
 import ProgressTracker     from './pages/ProgressTracker'
@@ -105,6 +108,10 @@ export default function App() {
         <Route path="/custom-mock/stats" element={protectedPage(<CustomMockStats />, { serviceKey: 'CUSTOM_MOCK' })} />
         <Route path="/unified-wrong" element={protectedPage(<UnifiedWrongReview />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/subjects" element={protectedPage(<WrongSubjectSelector />, { serviceKey: 'UNIFIED_WRONG' })} />
+        {/* GEPv30-138: 홈 L2-D "틀린 문제 풀기" 신규 진입점 — 세부과목→유형→정확한 틀린횟수 */}
+        <Route path="/wrong-review/subjects" element={protectedPage(<WrongReviewSubjects />, { serviceKey: 'UNIFIED_WRONG' })} />
+        <Route path="/wrong-review/type/:subject" element={protectedPage(<WrongReviewTypeSelector />, { serviceKey: 'UNIFIED_WRONG' })} />
+        <Route path="/wrong-review/count/:subject/:type" element={protectedPage(<WrongReviewCountSelector />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />, { serviceKey: 'UNIFIED_WRONG' })} />
