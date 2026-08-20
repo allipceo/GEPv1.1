@@ -86,10 +86,13 @@ function enrichQuestion(wrongItem, examQuestions) {
   }
 }
 
-// ── OX 정답(ox_result) 조회 ──────────────────────────────────────────────────
-// attempts 원장에는 정답이 없으므로(선택값·정오답만 기록) 재도전 채점을 위해
-// 원본 OX 문제 JSON에서 ox_id → ox_result 맵을 조회한다. 세션 내 파일당 1회만 fetch.
-const oxResultCache = new Map()   // subjectKey → Map(ox_id -> ox_result)
+// ── OX 정답(ox_result) + 문제 원문(statement_display) 조회 ──────────────────
+// attempts 원장에는 정답·원문이 없으므로(선택값·정오답만 기록) 재도전 채점과
+// 화면 표시를 위해 원본 OX 문제 JSON에서 ox_id → {result, text} 맵을 조회한다.
+// 원문(statement_display)을 채우지 않으면 화면에 "OX 문제 원문은 OX 풀기 화면에서
+// 확인 가능합니다" 플레이스홀더만 뜨고 실제 문제를 읽을 수 없다(2026-08-20 발견).
+// 세션 내 파일당 1회만 fetch.
+const oxResultCache = new Map()   // subjectKey → Map(ox_id -> { result, text })
 
 async function loadOxResultMap(subjectKey) {
   if (oxResultCache.has(subjectKey)) return oxResultCache.get(subjectKey)
@@ -98,7 +101,7 @@ async function loadOxResultMap(subjectKey) {
   try {
     const res = await fetch(`/data/${info.file}`)
     const all = await res.json()
-    const map = new Map(all.map(q => [q.ox_id, q.ox_result]))
+    const map = new Map(all.map(q => [q.ox_id, { result: q.ox_result, text: q.statement_display }]))
     oxResultCache.set(subjectKey, map)
     return map
   } catch {
@@ -251,9 +254,15 @@ export default function ChallengeMode() {
       maps.forEach(m => m.forEach((v, k) => combined.set(k, v)))
 
       if (!cancelled) {
-        setQuestions(enriched.map(q =>
-          q.isOX ? { ...q, ox_result: combined.get(q.id) ?? null } : q
-        ))
+        setQuestions(enriched.map(q => {
+          if (!q.isOX) return q
+          const info = combined.get(q.id)
+          return {
+            ...q,
+            ox_result:   info?.result ?? null,
+            questionRaw: info?.text   ?? null,
+          }
+        }))
       }
     }
 
