@@ -134,3 +134,37 @@ if (exactCount)    filtered = filtered.filter(q =>
 - 상단 모드 라벨도 L2-D 세션이면 "{세부과목} · {유형} · 정확히 N회"로 표시하도록 수정
 
 **검증:** `npm run build` 재확인 성공. 로그인 실기기 재검증은 조대표 담당(§8과 동일).
+
+---
+
+## 10. 추가 수정 2 — 더 근본적인 원인 발견: OX 재도전 기록의 subject 누락 (2026-08-20)
+
+§9 수정 이후에도 조대표가 "여전히 문제가 안 뜬다"고 재보고했고, 별도로 OX 홈 화면(`/ox`)에서 "누적 문제가 여러 개 있는데 개별 과목에는 반영되지 않는다"는 문제도 제기했다. 두 증상 모두 **같은 근본 원인 하나**에서 비롯된 것으로 확인했다.
+
+### 10-1. 근본 원인
+
+`ChallengeMode.jsx`의 `handleAnswer()`가 OX 재도전 결과를 기록할 때 `oxService.recordAttempt()`에 `answer`만 넘기고 **`subject`/`subSubject`/`round`를 넘기지 않았다**(GEPv30-137 STEP 5에서 도입된 결함). `oxService.recordAttempt()`는 누락된 값을 빈 문자열(`''`)로 기록하므로, ChallengeMode를 통해 OX 문제를 한 번이라도 재도전하면 그 문제의 **가장 최근 attempts 행의 subject/sub_subject가 빈 문자열로 덮어써졌다**.
+
+`get_unified_wrong_questions` RPC는 문제별로 **가장 최근 시도의 subject/sub_subject**를 반환하므로(`ARRAY_AGG(... ORDER BY attempted_at DESC)[1]`), 재도전 이력이 있는 문제는 이후 모든 세부과목 화면(`WrongReviewCountSelector`, `WrongSubjectSelector`, OX 홈 대시보드)에서 **그 어떤 세부과목에도 매칭되지 않고 사라졌다** — "상법·진위형" 조합에서 재도전 직후 문제가 안 뜬 것은 이 때문이다.
+
+실측: 테스터3 계정에서 `subject=''`인 attempts 9건 발견 — 전부 오늘(2026-08-20) ChallengeMode 재도전 세션에서 생성됨. OX 홈 대시보드 상단 "총 87문항"과 과목별 합계(법령 33+손보1부 45=78)가 9건 차이 났던 것도 바로 이 9건이 어느 과목에도 집계되지 않았기 때문.
+
+### 10-2. 별개로 발견된 2차 결함 — OX 홈 화면 표시 버그
+
+원인 조사 중 `OXHome.jsx`의 과목별 카드("Round N · 누적 N문항")가 Supabase 실측치가 아니라 **세션 메모리(oxStore, 새로고침 시 초기화)** 값을 쓰고 있어, 현재 화면에서 로드하지 않은 과목은 항상 "누적 0문항"으로 표시되던 것도 확인했다 — subject 누락 버그와는 무관한 별개의 표시 로직 결함이다.
+
+### 10-3. 조치
+
+| 파일 | 조치 |
+|---|---|
+| `src/pages/ChallengeMode.jsx` | `handleAnswer()`의 OX 분기에 `round`(question_id에서 파싱)·`subject`(`current.ox_subject_key`)·`subSubject`(`current.subSubject`)를 추가로 전달 |
+| Supabase 마이그레이션 `backfill_ox_challenge_mode_empty_subject` | `subject=''`(또는 NULL)인 기존 OX attempts 9건을 question_id 패턴에서 역산해 복구(`법령→law`, `손보1→p1`, `손보2→p2`, sub_subject는 ID 마지막 토큰) |
+| `src/pages/OXHome.jsx` | 과목별 "누적 N문항"을 세션 스토어 대신 이미 조회해둔 Supabase 실측치(`oxDash.bySubj[key].solved`)로 표시하도록 변경(현재 로드된 과목은 세션값과 실측치 중 큰 값을 사용해 최신성 유지) |
+
+### 10-4. 검증
+
+- 백필 후 테스터3 계정 SQL 재조회: `law 37건 + p1 50건 = 87건` (기존 총합과 정확히 일치, 빈 subject 0건)
+- RPC 재조회: "상법" 세부과목 OX 오답 10건이 모두 정상적으로 `subject='law', sub_subject='상법'`로 반환됨을 확인(이전엔 재도전한 문제가 빠져 있었음)
+- `npm run build` 재확인 성공
+
+이 결함은 GEPv30-138 범위 밖(OX 전체 재도전 경로에 영향)이지만, 같은 브랜치에서 발견·수정했으며 별도 회귀 없이 기존 로직을 보강하는 수정이라 동일 브랜치에 포함했다.

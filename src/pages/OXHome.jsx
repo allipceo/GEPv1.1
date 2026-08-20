@@ -133,9 +133,16 @@ export default function OXHome() {
         {OX_SUBJECTS.map((subj) => {
           const theme = SUBJECT_THEME[subj.key] ?? SUBJECT_THEME.law
 
-          // 크래시 가드: 현재 로드된 과목이 이 카드면 실제값, 아니면 기본값
-          const roundNo        = oxSubject === subj.key ? oxRoundNo        : 1
-          const totalCumulative = oxSubject === subj.key ? oxTotalCumulative : 0
+          // 현재 세션에서 로드된 과목이면 실제 round 표시, 아니면 기본값(1)
+          const roundNo = oxSubject === subj.key ? oxRoundNo : 1
+
+          // "누적 N문항"은 Supabase 실측(oxDash)을 우선한다 — 세션 스토어(oxStore)의
+          // totalCumulative는 현재 로드된 과목이 아니면 항상 0이라 다른 과목의 실제
+          // 누적 풀이수를 반영하지 못하는 문제가 있었다(2026-08-20 발견).
+          const persistedCumulative = oxDash?.bySubj?.[subj.key]?.solved ?? 0
+          const totalCumulative = oxSubject === subj.key
+            ? Math.max(oxTotalCumulative, persistedCumulative)
+            : persistedCumulative
 
           return (
             <button

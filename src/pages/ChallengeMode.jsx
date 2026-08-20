@@ -317,8 +317,15 @@ export default function ChallengeMode() {
     // get_unified_wrong_questions RPC가 다음 조회 시 "최근 정답"으로 반영한다.
     const authState = useAuthStore.getState()
     if (current.isOX) {
+      // subject/subSubject를 넘기지 않으면 오답 원장에 빈 값('')이 기록되어
+      // 이후 RPC가 이 문제를 어떤 세부과목에도 매칭하지 못하는 버그가 있었다(2026-08-20 발견).
+      // ox_subject_key는 enrichQuestion()이 보존해둔 원본 키('law'|'p1'|'p2').
+      const round = Number(current.id?.split('-')?.[1]) || 0
       oxService.recordAttempt(authState, current.id, isCorrect, {
-        answer: answerValue,
+        answer:     answerValue,
+        round,
+        subject:    current.ox_subject_key,
+        subSubject: current.subSubject,
       }).catch(() => {})
     } else {
       const found = examQuestions.find(q => q.id === current.id)
