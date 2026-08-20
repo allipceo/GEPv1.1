@@ -7,9 +7,11 @@
  * 카드 클릭: resetStore → loadQuestions → navigate /ox/:key/:subSubject
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import useOxStore from '../stores/oxStore'
+import { useAuthStore } from '../stores/authStore'
+import { supabase } from '../lib/supabase'
 import { OX_SUBJECTS } from '../config/oxSubjects'
 import AppHeader from '../components/AppHeader'
 
@@ -46,11 +48,11 @@ export default function OXSubject() {
   const { subjectKey } = useParams()
 
   const isLoading        = useOxStore((s) => s.isLoading)
-  const oxSubject        = useOxStore((s) => s.subject)
   const oxRoundNo        = useOxStore((s) => s.roundNo)
-  const oxTotalCumulative = useOxStore((s) => s.totalCumulative)
   const resetStore       = useOxStore((s) => s.resetStore)
   const loadQuestions    = useOxStore((s) => s.loadQuestions)
+
+  const userId = useAuthStore((s) => s.userId)
 
   // subjectKey 유효성 검증 — config에 없으면 /ox 리다이렉트
   const subjectInfo = OX_SUBJECTS.find((s) => s.key === subjectKey)
@@ -60,6 +62,30 @@ export default function OXSubject() {
       navigate('/ox', { replace: true })
     }
   }, [subjectKey, subjectInfo, navigate])
+
+  // 세부과목별 실제 누적 풀이수 — 세션 스토어(oxStore)는 카드 클릭마다 resetStore()로
+  // 0으로 초기화되어 "누적"을 표시할 수 없으므로, Supabase 실측치를 직접 조회한다
+  // (2026-08-20 발견 — OXHome.jsx와 동일한 근본 원인).
+  const [subDash, setSubDash] = useState(null)   // { total, bySub: { [subSubject]: n } }
+
+  useEffect(() => {
+    if (!userId || !subjectInfo) return
+    supabase
+      .from('attempts')
+      .select('sub_subject')
+      .eq('user_id', userId)
+      .eq('study_mode', 'ox')
+      .eq('subject', subjectKey)
+      .then(({ data }) => {
+        const bySub = {}
+        let total = 0
+        for (const { sub_subject } of data ?? []) {
+          total += 1
+          if (sub_subject) bySub[sub_subject] = (bySub[sub_subject] ?? 0) + 1
+        }
+        setSubDash({ total, bySub })
+      })
+  }, [userId, subjectKey, subjectInfo])
 
   if (!subjectInfo) return null
 
@@ -72,9 +98,7 @@ export default function OXSubject() {
     navigate(`/ox/${subjectKey}/${subSubject}`)
   }
 
-  // 현재 로드된 과목이 이 화면 과목이면 실제값, 아니면 기본값
-  const roundNo         = oxSubject === subjectKey ? oxRoundNo         : 1
-  const totalCumulative = oxSubject === subjectKey ? oxTotalCumulative : 0
+  const roundNo = oxRoundNo
 
   return (
     <div className="max-w-[640px] mx-auto px-4 py-6 flex flex-col gap-6">
@@ -103,7 +127,7 @@ export default function OXSubject() {
                 전체 ({subjectInfo.subs.length}과목 통합)
               </span>
               <span className={`text-xs ${theme.accentText}`}>
-                Round {roundNo} · 누적 {totalCumulative}문항
+                Round {roundNo} · 누적 {subDash?.total ?? 0}문항
               </span>
             </div>
             <span className="text-gray-400 text-lg">›</span>
@@ -119,7 +143,7 @@ export default function OXSubject() {
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold text-gray-800">{sub}</span>
                 <span className="text-xs text-gray-400">
-                  Round {roundNo} · 누적 {totalCumulative}문항
+                  Round {roundNo} · 누적 {subDash?.bySub?.[sub] ?? 0}문항
                 </span>
               </div>
               <span className="text-gray-300 text-lg">›</span>
