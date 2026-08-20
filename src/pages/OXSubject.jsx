@@ -95,11 +95,14 @@ export default function OXSubject() {
   // 카드 클릭 핸들러
   // 2026-08-20: loadProgress()가 어디서도 호출되지 않아 이어풀기가 항상 처음(0번)부터
   // 시작하던 결함 수정 — 저장된 재개 지점을 조회해 loadQuestions에 전달한다.
+  // 2026-08-20(2차): 재개 지점은 인덱스가 아니라 문제 ID(lastQuestionId)로 전달한다.
+  // loadQuestions가 현재 문제 목록에서 그 ID의 위치를 다시 찾으므로, 문제 세트가
+  // 바뀌어도 엉뚱한 문제를 가리키지 않는다(GEPv30-141 원칙 9).
   const handleCardClick = async (subSubject) => {
     resetStore()
     const authState = useAuthStore.getState()
     const progress = await oxService.loadProgress(authState, subjectKey, subSubject)
-    await loadQuestions(subjectKey, subSubject, progress?.currentIndex ?? 0)
+    await loadQuestions(subjectKey, subSubject, progress?.lastQuestionId ?? null)
     navigate(`/ox/${subjectKey}/${subSubject}`)
   }
 

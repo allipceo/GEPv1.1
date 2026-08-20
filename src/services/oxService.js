@@ -9,13 +9,19 @@
  *
  * saveProgress: progress 테이블 upsert
  *   - filter_key: 'ox:{subject}:{subSubject}'
- *   - current_index: 마지막으로 이동한 문항 인덱스(이어풀기 재개 지점, 라운드 완주 시 0)
+ *   - last_question_id: 다음에 풀어야 할 문항의 ox_id (이어풀기 재개 지점, 라운드 완주 시 null)
+ *   - current_index: last_question_id와 함께 저장하는 참고용 인덱스(주 재개 신호 아님)
  *
  * loadProgress: progress 테이블 조회
- *   - Returns { currentIndex } or null
+ *   - Returns { currentIndex, lastQuestionId } or null
  *
  * 2026-08-20: loadProgress가 어디서도 호출되지 않아 "이어풀기"가 항상 처음(0번)부터
  * 시작하던 결함을 발견 — OXSubject.jsx에서 호출하도록 연결(§oxStore.js loadQuestions 참조).
+ *
+ * 2026-08-20(2차): 순수 인덱스 저장은 문제 세트 구성이 바뀌면(회차 추가 등) 엉뚱한 문제를
+ * 가리킬 위험이 있어(GEPv30-141 통찰보고서 원칙 9), last_question_id(ID 앵커) 방식으로 전환.
+ * 재개 시 저장된 ID가 현재 문제 목록에서 몇 번째인지 다시 찾아 그 위치부터 시작한다
+ * (examStore.js Service B의 questionOrder ID 앵커 패턴과 동일한 사상).
  */
 
 import { supabase } from '../lib/supabase'
@@ -66,7 +72,7 @@ export const oxService = {
    * @param {string|null} userId
    * @param {string}      subject
    * @param {string}      subSubject
-   * @param {{ currentIndex: number }} data
+   * @param {{ currentIndex: number, lastQuestionId: string|null }} data
    */
   saveProgress: async (authState, subject, subSubject, data) => {
     if (!canCountAttempts(authState)) return
@@ -76,10 +82,11 @@ export const oxService = {
       .from('progress')
       .upsert(
         {
-          user_id:       userId,
-          filter_key:    `ox:${subject}:${subSubject}`,
-          current_index: data.currentIndex ?? 0,
-          last_updated:  new Date().toISOString(),
+          user_id:          userId,
+          filter_key:       `ox:${subject}:${subSubject}`,
+          current_index:    data.currentIndex ?? 0,
+          last_question_id: data.lastQuestionId ?? null,
+          last_updated:     new Date().toISOString(),
         },
         { onConflict: 'user_id,filter_key' }
       )
@@ -93,7 +100,7 @@ export const oxService = {
    * @param {string|null} userId
    * @param {string}      subject
    * @param {string}      subSubject
-   * @returns {Promise<{ currentIndex: number }|null>}
+   * @returns {Promise<{ currentIndex: number, lastQuestionId: string|null }|null>}
    */
   loadProgress: async (authState, subject, subSubject) => {
     if (!canCountAttempts(authState)) return null
@@ -101,12 +108,12 @@ export const oxService = {
 
     const { data, error } = await supabase
       .from('progress')
-      .select('current_index')
+      .select('current_index, last_question_id')
       .eq('user_id', userId)
       .eq('filter_key', `ox:${subject}:${subSubject}`)
       .single()
 
     if (error || !data) return null
-    return { currentIndex: data.current_index }
+    return { currentIndex: data.current_index, lastQuestionId: data.last_question_id }
   },
 }

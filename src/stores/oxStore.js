@@ -58,10 +58,13 @@ const useOxStore = create((set, get) => ({
   /**
    * JSON 로드 + 필터링 + questions 세팅.
    * subSubject가 'ALL'이면 전체 사용.
-   * startIndex: 이어풀기 재개 지점(oxService.loadProgress 결과) — 기본 0(처음부터).
+   * resumeQuestionId: 이어풀기 재개 지점(oxService.loadProgress().lastQuestionId) — ID 앵커 방식.
+   *   현재 로드된 문제 목록에서 이 ID의 위치를 찾아 그 지점부터 시작한다(순수 인덱스 저장은
+   *   문제 세트 구성이 바뀌면 엉뚱한 문제를 가리킬 수 있어 폐기 — GEPv30-141 원칙 9).
+   *   목록에서 찾지 못하면(문제 제거/재구성 등) 0번(처음)으로 안전하게 폴백한다.
    * 반드시 resetStore() 호출 후 사용 (과목 변경 시).
    */
-  loadQuestions: async (subjectKey, subSubject = 'ALL', startIndex = 0) => {
+  loadQuestions: async (subjectKey, subSubject = 'ALL', resumeQuestionId = null) => {
     set({ isLoading: true })
     try {
       const subjectInfo = OX_SUBJECTS.find((s) => s.key === subjectKey)
@@ -77,9 +80,10 @@ const useOxStore = create((set, get) => ({
         ? all
         : all.filter((q) => q.ox_id.split('-').slice(-1)[0] === subSubject)
 
-      const safeStartIndex = questions.length > 0
-        ? Math.min(Math.max(startIndex, 0), questions.length - 1)
-        : 0
+      const resumeIdx = resumeQuestionId
+        ? questions.findIndex((q) => q.ox_id === resumeQuestionId)
+        : -1
+      const safeStartIndex = resumeIdx >= 0 ? resumeIdx : 0
 
       set({
         subject:       subjectKey,
@@ -163,11 +167,14 @@ const useOxStore = create((set, get) => ({
       })
 
       // 이어풀기 재개 지점 저장 — 모아풀기(reviewQuestions)는 전체 목록의 부분집합이라
-      // 인덱스가 원래 목록과 어긋나므로 저장하지 않는다(2026-08-20 이어풀기 결함 수정).
+      // ID를 저장해도 일반풀이 목록에서 위치가 어긋나므로 저장하지 않는다
+      // (2026-08-20 이어풀기 결함 수정, 2026-08-20(2차) ID 앵커 방식으로 전환).
       if (!state.isReviewMode) {
         const authState = useAuthStore.getState()
+        const nextQuestionId = currentQs[nextIdx]?.ox_id ?? null
         oxService.saveProgress(authState, state.subject, state.subSubject, {
-          currentIndex: nextIdx,
+          currentIndex:   nextIdx,
+          lastQuestionId: nextQuestionId,
         })
       }
     }
@@ -211,7 +218,8 @@ const useOxStore = create((set, get) => ({
 
     // 라운드 완주 → 다음 진입 시 처음(0번)부터 시작하도록 재개 지점 리셋
     oxService.saveProgress(authState, state.subject, state.subSubject, {
-      currentIndex: 0,
+      currentIndex:   0,
+      lastQuestionId: null,
     })
 
     set({
