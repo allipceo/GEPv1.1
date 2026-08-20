@@ -58,9 +58,10 @@ const useOxStore = create((set, get) => ({
   /**
    * JSON 로드 + 필터링 + questions 세팅.
    * subSubject가 'ALL'이면 전체 사용.
+   * startIndex: 이어풀기 재개 지점(oxService.loadProgress 결과) — 기본 0(처음부터).
    * 반드시 resetStore() 호출 후 사용 (과목 변경 시).
    */
-  loadQuestions: async (subjectKey, subSubject = 'ALL') => {
+  loadQuestions: async (subjectKey, subSubject = 'ALL', startIndex = 0) => {
     set({ isLoading: true })
     try {
       const subjectInfo = OX_SUBJECTS.find((s) => s.key === subjectKey)
@@ -76,12 +77,16 @@ const useOxStore = create((set, get) => ({
         ? all
         : all.filter((q) => q.ox_id.split('-').slice(-1)[0] === subSubject)
 
+      const safeStartIndex = questions.length > 0
+        ? Math.min(Math.max(startIndex, 0), questions.length - 1)
+        : 0
+
       set({
         subject:       subjectKey,
         subSubject,
         questions,
         isLoading:     false,
-        currentIdx:    0,
+        currentIdx:    safeStartIndex,
         localSelected: null,
         showResult:    false,
       })
@@ -150,11 +155,21 @@ const useOxStore = create((set, get) => ({
     if (state.currentIdx >= currentQs.length - 1) {
       get().completeRound()
     } else {
+      const nextIdx = state.currentIdx + 1
       set({
-        currentIdx:    state.currentIdx + 1,
+        currentIdx:    nextIdx,
         localSelected: null,
         showResult:    false,
       })
+
+      // 이어풀기 재개 지점 저장 — 모아풀기(reviewQuestions)는 전체 목록의 부분집합이라
+      // 인덱스가 원래 목록과 어긋나므로 저장하지 않는다(2026-08-20 이어풀기 결함 수정).
+      if (!state.isReviewMode) {
+        const authState = useAuthStore.getState()
+        oxService.saveProgress(authState, state.subject, state.subSubject, {
+          currentIndex: nextIdx,
+        })
+      }
     }
   },
 
@@ -194,10 +209,9 @@ const useOxStore = create((set, get) => ({
     const state = get()
     const authState = useAuthStore.getState()
 
+    // 라운드 완주 → 다음 진입 시 처음(0번)부터 시작하도록 재개 지점 리셋
     oxService.saveProgress(authState, state.subject, state.subSubject, {
-      roundNo:         state.roundNo,
-      totalCumulative: state.totalCumulative,
-      wrongCount:      state.wrongMap.size,
+      currentIndex: 0,
     })
 
     set({

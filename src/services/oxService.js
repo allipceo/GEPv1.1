@@ -9,10 +9,13 @@
  *
  * saveProgress: progress 테이블 upsert
  *   - filter_key: 'ox:{subject}:{subSubject}'
- *   - current_index: roundNo
+ *   - current_index: 마지막으로 이동한 문항 인덱스(이어풀기 재개 지점, 라운드 완주 시 0)
  *
  * loadProgress: progress 테이블 조회
- *   - Returns { roundNo } or null
+ *   - Returns { currentIndex } or null
+ *
+ * 2026-08-20: loadProgress가 어디서도 호출되지 않아 "이어풀기"가 항상 처음(0번)부터
+ * 시작하던 결함을 발견 — OXSubject.jsx에서 호출하도록 연결(§oxStore.js loadQuestions 참조).
  */
 
 import { supabase } from '../lib/supabase'
@@ -63,7 +66,7 @@ export const oxService = {
    * @param {string|null} userId
    * @param {string}      subject
    * @param {string}      subSubject
-   * @param {{ roundNo: number, totalCumulative: number, wrongCount: number }} data
+   * @param {{ currentIndex: number }} data
    */
   saveProgress: async (authState, subject, subSubject, data) => {
     if (!canCountAttempts(authState)) return
@@ -75,7 +78,7 @@ export const oxService = {
         {
           user_id:       userId,
           filter_key:    `ox:${subject}:${subSubject}`,
-          current_index: data.roundNo ?? 1,
+          current_index: data.currentIndex ?? 0,
           last_updated:  new Date().toISOString(),
         },
         { onConflict: 'user_id,filter_key' }
@@ -90,7 +93,7 @@ export const oxService = {
    * @param {string|null} userId
    * @param {string}      subject
    * @param {string}      subSubject
-   * @returns {Promise<{ roundNo: number }|null>}
+   * @returns {Promise<{ currentIndex: number }|null>}
    */
   loadProgress: async (authState, subject, subSubject) => {
     if (!canCountAttempts(authState)) return null
@@ -104,6 +107,6 @@ export const oxService = {
       .single()
 
     if (error || !data) return null
-    return { roundNo: data.current_index }
+    return { currentIndex: data.current_index }
   },
 }

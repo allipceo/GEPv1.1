@@ -12,6 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import useOxStore from '../stores/oxStore'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
+import { oxService } from '../services/oxService'
 import { OX_SUBJECTS } from '../config/oxSubjects'
 import AppHeader from '../components/AppHeader'
 
@@ -92,9 +93,13 @@ export default function OXSubject() {
   const theme = SUBJECT_THEME[subjectKey] ?? SUBJECT_THEME.law
 
   // 카드 클릭 핸들러
+  // 2026-08-20: loadProgress()가 어디서도 호출되지 않아 이어풀기가 항상 처음(0번)부터
+  // 시작하던 결함 수정 — 저장된 재개 지점을 조회해 loadQuestions에 전달한다.
   const handleCardClick = async (subSubject) => {
     resetStore()
-    await loadQuestions(subjectKey, subSubject)
+    const authState = useAuthStore.getState()
+    const progress = await oxService.loadProgress(authState, subjectKey, subSubject)
+    await loadQuestions(subjectKey, subSubject, progress?.currentIndex ?? 0)
     navigate(`/ox/${subjectKey}/${subSubject}`)
   }
 
