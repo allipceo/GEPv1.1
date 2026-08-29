@@ -98,11 +98,16 @@ export default function OXSubject() {
   // 2026-08-20(2차): 재개 지점은 인덱스가 아니라 문제 ID(lastQuestionId)로 전달한다.
   // loadQuestions가 현재 문제 목록에서 그 ID의 위치를 다시 찾으므로, 문제 세트가
   // 바뀌어도 엉뚱한 문제를 가리키지 않는다(GEPv30-141 원칙 9).
+  // 2026-08-29: resetStore()가 totalCumulative(누적)도 0으로 초기화해 재진입할 때마다
+  // 화면 상단 "누적 N"이 0으로 보이던 결함 수정 — 원장 실측치를 조회해 되살린다.
   const handleCardClick = async (subSubject) => {
     resetStore()
     const authState = useAuthStore.getState()
-    const progress = await oxService.loadProgress(authState, subjectKey, subSubject)
-    await loadQuestions(subjectKey, subSubject, progress?.lastQuestionId ?? null)
+    const [progress, cumulativeCount] = await Promise.all([
+      oxService.loadProgress(authState, subjectKey, subSubject),
+      oxService.getCumulativeCount(authState, subjectKey, subSubject),
+    ])
+    await loadQuestions(subjectKey, subSubject, progress?.lastQuestionId ?? null, cumulativeCount)
     navigate(`/ox/${subjectKey}/${subSubject}`)
   }
 

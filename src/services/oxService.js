@@ -116,4 +116,41 @@ export const oxService = {
     if (error || !data) return null
     return { currentIndex: data.current_index, lastQuestionId: data.last_question_id }
   },
+
+  /**
+   * 화면 상단 "누적 N" 표시용 — attempts 원장에서 직접 집계한다.
+   *
+   * oxStore.totalCumulative(축3)는 순수 메모리 상태라, 카드를 다시 클릭해 진입할 때마다
+   * OXSubject.jsx의 handleCardClick()이 호출하는 resetStore()에 의해 0으로 초기화된다.
+   * "절대 리셋 금지"라는 설계 의도와 달리 실제로는 세션을 나갔다 들어오면 사라지므로,
+   * 진입 시점마다 원장에서 실측치를 다시 읽어와 그 값으로 되살린다(GEPv30-141 원칙:
+   * 표시용 통계는 항상 원장 기준으로 재계산).
+   *
+   * @param {string|null} userId
+   * @param {string}      subject
+   * @param {string}      subSubject - 'ALL'이면 subject 전체 합산
+   * @returns {Promise<number>}
+   */
+  getCumulativeCount: async (authState, subject, subSubject) => {
+    const userId = authState.userId
+    if (!userId) return 0
+
+    let query = supabase
+      .from('attempts')
+      .select('attempt_id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('study_mode', 'ox')
+      .eq('subject', subject)
+
+    if (subSubject !== 'ALL') {
+      query = query.eq('sub_subject', subSubject)
+    }
+
+    const { count, error } = await query
+    if (error) {
+      console.warn('[oxService] getCumulativeCount 실패:', error.message)
+      return 0
+    }
+    return count ?? 0
+  },
 }

@@ -62,9 +62,12 @@ const useOxStore = create((set, get) => ({
    *   현재 로드된 문제 목록에서 이 ID의 위치를 찾아 그 지점부터 시작한다(순수 인덱스 저장은
    *   문제 세트 구성이 바뀌면 엉뚱한 문제를 가리킬 수 있어 폐기 — GEPv30-141 원칙 9).
    *   목록에서 찾지 못하면(문제 제거/재구성 등) 0번(처음)으로 안전하게 폴백한다.
+   * initialCumulative: 화면 상단 "누적 N" 표시값(oxService.getCumulativeCount() 조회 결과).
+   *   resetStore()가 totalCumulative를 0으로 초기화하므로, 매 진입 시 원장 실측치로
+   *   되살리지 않으면 재진입할 때마다 0으로 보인다(2026-08-29 발견 및 수정).
    * 반드시 resetStore() 호출 후 사용 (과목 변경 시).
    */
-  loadQuestions: async (subjectKey, subSubject = 'ALL', resumeQuestionId = null) => {
+  loadQuestions: async (subjectKey, subSubject = 'ALL', resumeQuestionId = null, initialCumulative = 0) => {
     set({ isLoading: true })
     try {
       const subjectInfo = OX_SUBJECTS.find((s) => s.key === subjectKey)
@@ -86,13 +89,14 @@ const useOxStore = create((set, get) => ({
       const safeStartIndex = resumeIdx >= 0 ? resumeIdx : 0
 
       set({
-        subject:       subjectKey,
+        subject:         subjectKey,
         subSubject,
         questions,
-        isLoading:     false,
-        currentIdx:    safeStartIndex,
-        localSelected: null,
-        showResult:    false,
+        isLoading:       false,
+        currentIdx:      safeStartIndex,
+        localSelected:   null,
+        showResult:      false,
+        totalCumulative: initialCumulative,
       })
     } catch (err) {
       set({ isLoading: false })
