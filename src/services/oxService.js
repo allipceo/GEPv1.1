@@ -26,6 +26,7 @@
 
 import { supabase } from '../lib/supabase'
 import { canCountAttempts } from './countingEligibility'
+import { getCumulativeCount as getLedgerCumulativeCount } from './ledgerStatsService'
 
 export const oxService = {
   /**
@@ -126,31 +127,15 @@ export const oxService = {
    * 진입 시점마다 원장에서 실측치를 다시 읽어와 그 값으로 되살린다(GEPv30-141 원칙:
    * 표시용 통계는 항상 원장 기준으로 재계산).
    *
+   * 실제 집계 로직은 ledgerStatsService(GEPv30-153, 전역 공용 모듈)에 있다 —
+   * OX 전용 시그니처(subject/subSubject 위치 인자)만 여기서 유지해 기존 호출부
+   * (oxStore.js, OXSubject.jsx)를 바꾸지 않는다.
+   *
    * @param {string|null} userId
    * @param {string}      subject
    * @param {string}      subSubject - 'ALL'이면 subject 전체 합산
    * @returns {Promise<number>}
    */
-  getCumulativeCount: async (authState, subject, subSubject) => {
-    const userId = authState.userId
-    if (!userId) return 0
-
-    let query = supabase
-      .from('attempts')
-      .select('attempt_id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('study_mode', 'ox')
-      .eq('subject', subject)
-
-    if (subSubject !== 'ALL') {
-      query = query.eq('sub_subject', subSubject)
-    }
-
-    const { count, error } = await query
-    if (error) {
-      console.warn('[oxService] getCumulativeCount 실패:', error.message)
-      return 0
-    }
-    return count ?? 0
-  },
+  getCumulativeCount: (authState, subject, subSubject) =>
+    getLedgerCumulativeCount(authState, { studyMode: 'ox', subject, subSubject }),
 }

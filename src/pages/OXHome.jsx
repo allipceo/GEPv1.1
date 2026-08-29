@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { supabase } from '../lib/supabase'
+import { getCumulativeBreakdown } from '../services/ledgerStatsService'
 import useOxStore from '../stores/oxStore'
 import { OX_SUBJECTS } from '../config/oxSubjects'
 import AppHeader from '../components/AppHeader'
@@ -53,27 +53,19 @@ export default function OXHome() {
 
   const [oxDash, setOxDash] = useState(null)  // null = 로딩중
 
+  // GEPv30-153: 전역 공용 ledgerStatsService로 통합 — attempts 원장 직접 쿼리는
+  // 이 파일에 더 이상 두지 않는다.
   useEffect(() => {
     if (authStatus !== 'authenticated' || !userId) return
-    supabase
-      .from('attempts')
-      .select('subject, is_correct')
-      .eq('user_id', userId)
-      .eq('study_mode', 'ox')
-      .then(({ data }) => {
-        if (!data || data.length === 0) { setOxDash({ total: 0, correct: 0, bySubj: {} }); return }
-        let total = 0, correct = 0
-        const bySubj = { law: { solved: 0, correct: 0 }, p1: { solved: 0, correct: 0 }, p2: { solved: 0, correct: 0 } }
-        data.forEach(({ subject, is_correct }) => {
-          total++
-          if (is_correct) correct++
-          if (bySubj[subject]) {
-            bySubj[subject].solved++
-            if (is_correct) bySubj[subject].correct++
-          }
-        })
-        setOxDash({ total, correct, bySubj })
-      })
+    getCumulativeBreakdown({ userId }, { studyMode: 'ox' }).then(({ total, correct, bySubject }) => {
+      // law/p1/p2 카드는 실측이 없어도 항상 0으로 렌더링해야 하므로 기본값을 미리 채운다.
+      const bySubj = {
+        law: bySubject.law ?? { solved: 0, correct: 0 },
+        p1:  bySubject.p1  ?? { solved: 0, correct: 0 },
+        p2:  bySubject.p2  ?? { solved: 0, correct: 0 },
+      }
+      setOxDash({ total, correct, bySubj })
+    })
   }, [authStatus, userId])
 
   // 레벨 게이트는 App.jsx 라우트 레벨(serviceKey: 'OX')로 이관됨 (GEPv30-120)

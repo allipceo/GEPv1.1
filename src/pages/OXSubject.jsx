@@ -11,8 +11,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import useOxStore from '../stores/oxStore'
 import { useAuthStore } from '../stores/authStore'
-import { supabase } from '../lib/supabase'
 import { oxService } from '../services/oxService'
+import { getCumulativeBreakdown } from '../services/ledgerStatsService'
 import { OX_SUBJECTS } from '../config/oxSubjects'
 import AppHeader from '../components/AppHeader'
 
@@ -65,27 +65,22 @@ export default function OXSubject() {
   }, [subjectKey, subjectInfo, navigate])
 
   // 세부과목별 실제 누적 풀이수 — 세션 스토어(oxStore)는 카드 클릭마다 resetStore()로
-  // 0으로 초기화되어 "누적"을 표시할 수 없으므로, Supabase 실측치를 직접 조회한다
-  // (2026-08-20 발견 — OXHome.jsx와 동일한 근본 원인).
+  // 0으로 초기화되어 "누적"을 표시할 수 없으므로, 원장 실측치를 직접 조회한다
+  // (2026-08-20 발견 — OXHome.jsx와 동일한 근본 원인. 2026-08-29 ledgerStatsService로
+  // 공용화 — GEPv30-153, 전역 통계 서비스 기본 프로세스).
   const [subDash, setSubDash] = useState(null)   // { total, bySub: { [subSubject]: n } }
 
   useEffect(() => {
     if (!userId || !subjectInfo) return
-    supabase
-      .from('attempts')
-      .select('sub_subject')
-      .eq('user_id', userId)
-      .eq('study_mode', 'ox')
-      .eq('subject', subjectKey)
-      .then(({ data }) => {
+    getCumulativeBreakdown({ userId }, { studyMode: 'ox', subject: subjectKey }).then(
+      ({ total, bySubSubject }) => {
         const bySub = {}
-        let total = 0
-        for (const { sub_subject } of data ?? []) {
-          total += 1
-          if (sub_subject) bySub[sub_subject] = (bySub[sub_subject] ?? 0) + 1
+        for (const [subSubject, { solved }] of Object.entries(bySubSubject)) {
+          bySub[subSubject] = solved
         }
         setSubDash({ total, bySub })
-      })
+      }
+    )
   }, [userId, subjectKey, subjectInfo])
 
   if (!subjectInfo) return null
