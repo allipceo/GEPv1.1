@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import useExamStore from '../stores/examStore'
 import AppHeader from '../components/AppHeader'
 
+const SUBJECT_ORDER = ['법령', '손보1부', '손보2부']
+
 const SUBJECT_STYLES = {
   '법령': {
     text: 'text-blue-700',
@@ -35,16 +37,25 @@ export default function ServiceBHome() {
       subMap.set(question.subSubject, (subMap.get(question.subSubject) ?? 0) + 1)
     })
 
-    return [...grouped.entries()].map(([subject, subMap]) => {
-      const subs = [...subMap.entries()]
-        .sort(([a], [b]) => String(a).localeCompare(String(b), 'ko'))
-        .map(([subSubject, count]) => ({ subSubject, count }))
-      return {
-        subject,
-        total: subs.reduce((sum, item) => sum + item.count, 0),
-        subs,
-      }
-    })
+    return [...grouped.entries()]
+      .sort(([a], [b]) => {
+        const ai = SUBJECT_ORDER.indexOf(a)
+        const bi = SUBJECT_ORDER.indexOf(b)
+        if (ai === -1 && bi === -1) return String(a).localeCompare(String(b), 'ko')
+        if (ai === -1) return 1
+        if (bi === -1) return -1
+        return ai - bi
+      })
+      .map(([subject, subMap]) => {
+        const subs = [...subMap.entries()]
+          .sort(([a], [b]) => String(a).localeCompare(String(b), 'ko'))
+          .map(([subSubject, count]) => ({ subSubject, count }))
+        return {
+          subject,
+          total: subs.reduce((sum, item) => sum + item.count, 0),
+          subs,
+        }
+      })
   }, [questions])
 
   const start = (subject, subSubject = null, restart = false) => {
