@@ -115,7 +115,7 @@ export default function App() {
         <Route path="/unified-wrong/challenge/:minCount" element={protectedPage(<ChallengeMode />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/result" element={protectedPage(<ChallengeResult />, { serviceKey: 'UNIFIED_WRONG' })} />
         <Route path="/unified-wrong/progress" element={protectedPage(<ProgressTracker />, { serviceKey: 'UNIFIED_WRONG' })} />
-        <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />)} />
+        <Route path="/stats-dashboard" element={protectedPage(<StatsDashboard />, { serviceKey: 'STATS' })} />
         <Route path="/settings" element={protectedPage(<Settings />)} />
         <Route path="/mini-mock" element={protectedPage(<MiniMockHome />, { serviceKey: 'MINI_MOCK' })} />
         <Route path="/mini-mock/stats" element={protectedPage(<MiniMockStats />, { serviceKey: 'MINI_MOCK' })} />

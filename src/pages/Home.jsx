@@ -9,7 +9,6 @@ import useStatsStore from '../stores/statsStore'
 import LoginButton from '../components/LoginButton'
 import { useAuthStore } from '../stores/authStore'
 import { supabase } from '../lib/supabase'
-import { canCountAttempts } from '../services/countingEligibility'
 import { isServiceEnabled } from '../config/featureFlags'
 
 const EXAM_DATE = new Date('2026-11-15')
@@ -39,12 +38,8 @@ export default function Home() {
 
   const stats = useStatsStore((s) => s.stats)
   const authStatus = useAuthStore((s) => s.authStatus)
-  const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const realName = useAuthStore((s) => s.realName)
   const userId = useAuthStore((s) => s.userId)
-  const approvalStatus = useAuthStore((s) => s.approvalStatus)
-  const status = useAuthStore((s) => s.status)
-  const isPaused = useAuthStore((s) => s.isPaused)
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const prevDevice = useAuthStore((s) => s.prevDevice)
   const dismissDeviceBanner = useAuthStore((s) => s.dismissDeviceBanner)
@@ -80,6 +75,13 @@ export default function Home() {
   // 표시하면 실제로는 3문제만 풀고 100%가 나와도 "10회 기준"으로 오해할 수 있음).
   const [recentMcq, setRecentMcq] = useState(null)
   const [recentOx,  setRecentOx]  = useState(null)
+
+  // GEPv30-154 순차개방 — 잠긴 메뉴 클릭 시 안내 토스트 (2.5초 자동 소멸)
+  const [lockedToast, setLockedToast] = useState(false)
+  const handleLockedClick = () => {
+    setLockedToast(true)
+    setTimeout(() => setLockedToast(false), 2500)
+  }
 
   useEffect(() => {
     if (authStatus !== 'authenticated' || !userId) return
@@ -129,10 +131,6 @@ export default function Home() {
       </div>
     )
   }
-
-  const canUseCounting = canCountAttempts({
-    authStatus, serviceLevel, userId, approvalStatus, status, isPaused, isAdmin,
-  })
 
   // 서비스 순차 가동 잠금 표시 (GEPv30-120) — 관리자는 QA를 위해 잠금 표시 없음
   const isLocked = (serviceKey) => !isAdmin && !isServiceEnabled(serviceKey)
@@ -232,6 +230,13 @@ export default function Home() {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* GEPv30-154 순차개방 안내 토스트 */}
+      {lockedToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-800 text-white text-sm px-5 py-3 rounded-full shadow-lg">
+          🔒 순차적으로 오픈 예정입니다
         </div>
       )}
 
@@ -357,7 +362,7 @@ export default function Home() {
         {/* L2-A */}
         <button
           type="button"
-          onClick={() => navigate('/service-a')}
+          onClick={() => isLocked('SERVICE_A') ? handleLockedClick() : navigate('/service-a')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-blue-50 px-4 py-3.5 text-left active:bg-blue-100 ${isLocked('SERVICE_A') ? 'opacity-50 cursor-default active:bg-blue-50' : ''}`}
         >
           <span className="text-2xl">📋</span>
@@ -374,22 +379,24 @@ export default function Home() {
         {/* L2-B */}
         <button
           type="button"
-          onClick={() => navigate('/service-b')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-green-50 px-4 py-3.5 text-left active:bg-green-100"
+          onClick={() => isLocked('SERVICE_B') ? handleLockedClick() : navigate('/service-b')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-green-50 px-4 py-3.5 text-left active:bg-green-100 ${isLocked('SERVICE_B') ? 'opacity-50 cursor-default active:bg-green-50' : ''}`}
         >
           <span className="text-2xl">📚</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-green-800">선택형 풀기 — 과목별</p>
             <p className="text-xs text-green-500 mt-0.5">법령·손보1·손보2 랜덤</p>
           </div>
-          <span className="text-xs font-bold text-green-300 bg-green-100 px-1.5 py-0.5 rounded-full">L2-B</span>
+          {isLocked('SERVICE_B')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-green-300 bg-green-100 px-1.5 py-0.5 rounded-full">L2-B</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
 
         {/* L2-C */}
         <button
           type="button"
-          onClick={() => navigate('/ox')}
+          onClick={() => isLocked('OX') ? handleLockedClick() : navigate('/ox')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3.5 text-left active:bg-emerald-100 ${isLocked('OX') ? 'opacity-50 cursor-default active:bg-emerald-50' : ''}`}
         >
           <span className="text-2xl">⭕</span>
@@ -403,27 +410,27 @@ export default function Home() {
           <span className="text-gray-300 text-lg">›</span>
         </button>
 
-        {/* L2-D — canUseCounting 조건 유지 */}
-        {canUseCounting && (
-          <button
-            type="button"
-            onClick={() => navigate('/wrong-review/subjects')}
-            className="w-full flex items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3.5 text-left active:bg-orange-100"
-          >
-            <span className="text-2xl">✏️</span>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-orange-800">틀린 문제 풀기</p>
-              <p className="text-xs text-orange-400 mt-0.5">세부과목·유형·횟수별 정밀 복습</p>
-            </div>
-            <span className="text-xs font-bold text-orange-300 bg-orange-100 px-1.5 py-0.5 rounded-full">L2-D</span>
-            <span className="text-gray-300 text-lg">›</span>
-          </button>
-        )}
+        {/* L2-D — GEPv30-154: canUseCounting 조건 제거, 잠금으로 제어 (2주차 개방) */}
+        <button
+          type="button"
+          onClick={() => isLocked('UNIFIED_WRONG') ? handleLockedClick() : navigate('/wrong-review/subjects')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3.5 text-left active:bg-orange-100 ${isLocked('UNIFIED_WRONG') ? 'opacity-50 cursor-default active:bg-orange-50' : ''}`}
+        >
+          <span className="text-2xl">✏️</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-orange-800">틀린 문제 풀기</p>
+            <p className="text-xs text-orange-400 mt-0.5">세부과목·유형·횟수별 정밀 복습</p>
+          </div>
+          {isLocked('UNIFIED_WRONG')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-orange-300 bg-orange-100 px-1.5 py-0.5 rounded-full">L2-D</span>}
+          <span className="text-gray-300 text-lg">›</span>
+        </button>
 
         {/* L2-E 모의고사 — 신규 연결 */}
         <button
           type="button"
-          onClick={() => navigate('/mock')}
+          onClick={() => isLocked('MOCK_EXAM') ? handleLockedClick() : navigate('/mock')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-violet-50 px-4 py-3.5 text-left active:bg-violet-100 ${isLocked('MOCK_EXAM') ? 'opacity-50 cursor-default active:bg-violet-50' : ''}`}
         >
           <span className="text-2xl">📝</span>
@@ -440,7 +447,7 @@ export default function Home() {
         {/* 간이 모의고사 — GEPv30-109/110 신규 연결 */}
         <button
           type="button"
-          onClick={() => navigate('/mini-mock')}
+          onClick={() => isLocked('MINI_MOCK') ? handleLockedClick() : navigate('/mini-mock')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-cyan-50 px-4 py-3.5 text-left active:bg-cyan-100 ${isLocked('MINI_MOCK') ? 'opacity-50 cursor-default active:bg-cyan-50' : ''}`}
         >
           <span className="text-2xl">⏱️</span>
@@ -455,7 +462,7 @@ export default function Home() {
         {/* E-2 맞춤형 모의고사 — GEPv30-120 신규 메뉴 추가 */}
         <button
           type="button"
-          onClick={() => navigate('/custom-mock')}
+          onClick={() => isLocked('CUSTOM_MOCK') ? handleLockedClick() : navigate('/custom-mock')}
           className={`w-full flex items-center gap-3 rounded-2xl bg-fuchsia-50 px-4 py-3.5 text-left active:bg-fuchsia-100 ${isLocked('CUSTOM_MOCK') ? 'opacity-50 cursor-default active:bg-fuchsia-50' : ''}`}
         >
           <span className="text-2xl">🎯</span>
@@ -472,15 +479,17 @@ export default function Home() {
         {/* L2-F 통합오답 — 신규 연결 */}
         <button
           type="button"
-          onClick={() => navigate('/unified-wrong')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-pink-50 px-4 py-3.5 text-left active:bg-pink-100"
+          onClick={() => isLocked('UNIFIED_WRONG') ? handleLockedClick() : navigate('/unified-wrong')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-pink-50 px-4 py-3.5 text-left active:bg-pink-100 ${isLocked('UNIFIED_WRONG') ? 'opacity-50 cursor-default active:bg-pink-50' : ''}`}
         >
           <span className="text-2xl">🔥</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-pink-800">통합 오답 복습</p>
             <p className="text-xs text-pink-400 mt-0.5">MCQ+OX+모의 오답 한번에</p>
           </div>
-          <span className="text-xs font-bold text-pink-300 bg-pink-100 px-1.5 py-0.5 rounded-full">L2-F</span>
+          {isLocked('UNIFIED_WRONG')
+            ? <span className="text-gray-400 text-lg">🔒</span>
+            : <span className="text-xs font-bold text-pink-300 bg-pink-100 px-1.5 py-0.5 rounded-full">L2-F</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
       </div>
@@ -490,14 +499,15 @@ export default function Home() {
         <p className="text-xs font-bold text-gray-400 px-1 mb-2">학습 분석</p>
         <button
           type="button"
-          onClick={() => navigate('/stats-dashboard')}
-          className="w-full flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3.5 text-left active:bg-indigo-100"
+          onClick={() => isLocked('STATS') ? handleLockedClick() : navigate('/stats-dashboard')}
+          className={`w-full flex items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3.5 text-left active:bg-indigo-100 ${isLocked('STATS') ? 'opacity-50 cursor-default active:bg-indigo-50' : ''}`}
         >
           <span className="text-2xl">📊</span>
           <div className="flex-1">
             <p className="text-sm font-bold text-indigo-800">내 학습 분석</p>
             <p className="text-xs text-indigo-400 mt-0.5">취약점 · 반복오답 · 합격확률</p>
           </div>
+          {isLocked('STATS') && <span className="text-gray-400 text-lg">🔒</span>}
           <span className="text-gray-300 text-lg">›</span>
         </button>
       </div>
