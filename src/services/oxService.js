@@ -54,6 +54,7 @@ export const oxService = {
         is_correct:      isCorrect,
         exam_version:    '1.0',
         service_level:   authState.serviceLevel ?? 1,
+        device_type:     window.innerWidth < 768 ? 'mobile' : 'desktop',
       }),
       supabase.rpc('upsert_question_stat', {
         p_question_id: oxId,

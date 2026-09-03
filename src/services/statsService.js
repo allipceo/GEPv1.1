@@ -26,6 +26,7 @@ export const recordAttempt = async (statsStore, authState, payload) => {
       is_correct: isCorrect,
       exam_version: '1.0',
       service_level: serviceLevel,
+      device_type: window.innerWidth < 768 ? 'mobile' : 'desktop',
     })
 
     if (error) {
