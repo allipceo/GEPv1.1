@@ -13,6 +13,9 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 
 const PILOT_START = '2026-09-03'
+// 파일럿 개시일(2026-09-03) 00:00 KST = 2026-09-02T15:00:00Z.
+// 모든 집계를 이 시점 이후 attempts로 한정 — 개시 전 개발·테스트 데이터 제외.
+const PILOT_START_TS = '2026-09-02T15:00:00+00:00'
 const ACTIVE_WINDOW_DAYS = 3
 
 const MODE_LABEL = {
@@ -76,7 +79,8 @@ export default function AdminDashboard() {
     const [aRes, uRes] = await Promise.all([
       supabase
         .from('attempts')
-        .select('attempt_id, is_correct, attempted_at, study_mode, device_type, user_id'),
+        .select('attempt_id, is_correct, attempted_at, study_mode, device_type, user_id')
+        .gte('attempted_at', PILOT_START_TS),
       supabase
         .from('users')
         .select('user_id, real_name, last_access_at, last_device')
@@ -220,7 +224,9 @@ export default function AdminDashboard() {
           {isLoading ? '불러오는 중…' : '새로고침'}
         </button>
       </div>
-      <p className="mt-1 text-xs text-gray-400">마지막 새로고침: {fmtTime(refreshedAt)}</p>
+      <p className="mt-1 text-xs text-gray-400">
+        집계 기간: 파일럿 개시({PILOT_START}) ~ 현재 · 마지막 새로고침: {fmtTime(refreshedAt)}
+      </p>
 
       {error && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
