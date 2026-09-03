@@ -15,8 +15,8 @@
 | 2단계 AdminDashboard | ✅ `src/pages/AdminDashboard.jsx` 신규 (CSS-only, 외부 라이브러리 0) |
 | 라우트 | ✅ `src/App.jsx`에 `/admin/dashboard` 신규 등록 (지시서엔 "이미 존재"였으나 **실제 미등록** — 추가함) |
 | 빌드 | ✅ `vite build` 성공 (165 modules, 에러 0, 7.8s) |
-| 3단계 커밋/push | ✅ 커밋 `<hash>` → origin/main |
-| **데이터 조회** | 🔴 **차단 — `attempts` RLS 문제 (아래 4장). 조대표 결정 필요** |
+| 3단계 커밋/push | ✅ 커밋 `046c350` → origin/main (`c117ce9..046c350`) |
+| **데이터 조회** | ✅ **해결 — 선택지 A 적용 (조대표 승인 2026-09-04). 마이그레이션 `017_attempts_admin_select` 반영** |
 
 ---
 
@@ -92,6 +92,31 @@ AS $$ ... 서버에서 집계하여 요약 JSON만 반환 ... $$;
 
 > 노팀장 권고: **A** (파일럿 규모·속도 우선, 관리자 전용 화면이므로 원장 노출 리스크 낮음).
 > A 승인 시 마이그레이션 1건 적용 → 2분 내 대시보드 정상화.
+
+### ✅ 조치 결과 (2026-09-04, 조대표 A 승인)
+
+`supabase/migrations/017_attempts_admin_select.sql` 적용 완료:
+```sql
+CREATE POLICY attempts_admin_select ON public.attempts
+  FOR SELECT USING (public.gep_is_admin());
+```
+- 확인: `pg_policies`에 `attempts_admin_select`(SELECT, `gep_is_admin()`) + 기존 `attempts_self`(ALL) 공존
+- permissive 정책 OR 결합 → 관리자=전체 행 조회 / 일반 사용자=본인 행만 (동작 불변)
+- 롤백: `DROP POLICY attempts_admin_select ON public.attempts;`
+
+### 배포 후 대시보드 예상 수치 (2026-09-04 기준 DB 스냅샷)
+
+| 지표 | 값 |
+|------|-----|
+| 총 풀이 수 | 1,407 |
+| 전체 정답률 | 38% |
+| 서비스별 | OX 667 · 선택형(회차순) 254 · 선택형(과목별) 211 · 간이모의 179 · 틀린문제복습 66 · 통합오답 30 |
+| 풀이 기록 있는 참가자 | 14명 중 6명 (나머지 8명 카드 = "아직 풀이 없음") |
+| 활성 사용자(최근 3일) | 13 / 14 |
+
+> ⚠️ **알아둘 점**: `총 풀이 수 1,407`에는 파일럿 이전 개발·테스트 데이터(2026-08-06~09-02, 약 1,379건)가 포함됨.
+> `일별 풀이 추이`는 지시서 §2-3대로 파일럿 시작일(2026-09-03)부터만 표시하므로 두 수치가 시각적으로 달라 보임.
+> 파일럿 순수 지표만 보려면 후속으로 "파일럿 기간 필터"(예: `attempted_at >= '2026-09-03'`)를 전 패널에 적용하는 개발이 필요 — 노팀장 판단 요청.
 
 ---
 
