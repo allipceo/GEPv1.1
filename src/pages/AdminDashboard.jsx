@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
+import AdminTabs from '../components/AdminTabs'
 
 const PILOT_START = '2026-09-03'
 // 파일럿 개시일(2026-09-03) 00:00 KST = 2026-09-02T15:00:00Z.
@@ -212,8 +213,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen max-w-[720px] mx-auto bg-gray-50 px-4 py-6">
+      <AdminTabs active="dashboard" />
+
       {/* 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="mt-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">📊 파일럿 학습 현황 대시보드</h1>
         <button
           type="button"

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { resetCountingBaseline } from '../services/countingResetService'
+import AdminTabs from '../components/AdminTabs'
 
 const STATUS_LABEL = {
   pending: '승인 대기',
@@ -232,6 +233,8 @@ export default function AdminUsers() {
 
   return (
     <AdminShell>
+      <AdminTabs active="users" />
+
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="text-base font-bold text-gray-900">신규 직원 계정 생성</h2>
         <form onSubmit={handleCreateUser} className="mt-3 flex flex-col gap-3">

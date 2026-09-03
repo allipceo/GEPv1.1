@@ -258,7 +258,7 @@ export default function Home() {
           {isAdmin && (
             <button
               type="button"
-              onClick={() => navigate('/admin/users')}
+              onClick={() => navigate('/admin/dashboard')}
               className="text-sm text-gray-500 border rounded px-2 py-1"
             >
               관리자
