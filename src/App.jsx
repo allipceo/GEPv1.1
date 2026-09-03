@@ -37,6 +37,7 @@ import ChallengeMode       from './pages/ChallengeMode'
 import ChallengeResult     from './pages/ChallengeResult'
 import ProgressTracker     from './pages/ProgressTracker'
 import AdminUsers          from './pages/AdminUsers'
+import AdminDashboard      from './pages/AdminDashboard'
 import StatsDashboard      from './pages/StatsDashboard'
 import Settings            from './pages/Settings'
 import MiniMockHome        from './pages/MiniMockHome'
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/service-a" element={protectedPage(<ServiceAHome />, { serviceKey: 'SERVICE_A' })} />
         <Route path="/service-b" element={protectedPage(<ServiceBHome />, { serviceKey: 'SERVICE_B' })} />
         <Route path="/admin/users" element={protectedPage(<AdminUsers />, { requireApproval: false })} />
+        <Route path="/admin/dashboard" element={protectedPage(<AdminDashboard />, { requireApproval: false })} />
         {/* /question, /result, /wrong-review는 서비스 A·B가 공유하는 화면(examStore.studyMode로 분기)이라
             단일 serviceKey를 물릴 수 없음 — 진입점(/service-a, /service-b)에서 게이트. GEPv30-121 참조 */}
         <Route path="/question" element={protectedPage(<Question />)} />
