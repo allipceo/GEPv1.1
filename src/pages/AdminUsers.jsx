@@ -21,9 +21,9 @@ export default function AdminUsers() {
   const [error, setError] = useState('')
   const [memoByUser, setMemoByUser] = useState({})
 
-  const [newEmployeeId, setNewEmployeeId] = useState('')
   const [newRealName, setNewRealName] = useState('')
-  const [newPhone, setNewPhone] = useState('')
+  const [newPhone, setNewPhone] = useState('')          // 휴대폰 뒤 8자리 = 초기 비밀번호
+  const [previewId, setPreviewId] = useState('')        // 자동 생성될 사번 미리보기 (읽기전용)
   const [createError, setCreateError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
@@ -33,8 +33,31 @@ export default function AdminUsers() {
   const [resettingPwUserId, setResettingPwUserId] = useState(null)
 
   useEffect(() => {
-    if (isAdmin) loadUsers()
+    if (isAdmin) {
+      loadUsers()
+      loadPreviewId()
+    }
   }, [isAdmin])
+
+  // 자동 생성될 사번 미리보기 — 엣지 함수 dryRun 모드
+  const loadPreviewId = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ dryRun: true }),
+        }
+      )
+      const result = await res.json()
+      setPreviewId(res.ok ? (result.employeeId ?? '') : '')
+    } catch {
+      setPreviewId('')
+    }
+  }
 
   const loadUsers = async () => {
     setIsLoading(true)
@@ -166,16 +189,13 @@ export default function AdminUsers() {
     event.preventDefault()
     setCreateError('')
 
-    if (!/^\d{6,}$/.test(newEmployeeId.trim())) {
-      setCreateError('사번은 숫자 6자리 이상이어야 합니다.')
-      return
-    }
     if (!newRealName.trim()) {
-      setCreateError('실명을 입력해 주세요.')
+      setCreateError('성명을 입력해 주세요.')
       return
     }
-    if (newPhone.length !== 8) {
-      setCreateError('휴대폰 뒷 8자리를 정확히 입력해 주세요.')
+    // 문자열 그대로 검증 — 앞자리 0 보존, 숫자 변환 금지
+    if (!/^\d{8}$/.test(newPhone)) {
+      setCreateError('휴대폰 뒤 8자리를 정확히 입력해 주세요.')
       return
     }
 
@@ -193,9 +213,8 @@ export default function AdminUsers() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            employeeId: newEmployeeId.trim(),
             realName: newRealName.trim(),
-            phone: newPhone,
+            phone8: newPhone,
           }),
         }
       )
@@ -206,11 +225,13 @@ export default function AdminUsers() {
         return
       }
 
-      window.alert(`계정 생성 완료\n사번: ${result.employeeId}\n이메일: ${result.email}`)
-      setNewEmployeeId('')
+      window.alert(
+        `계정 생성 완료\n성명: ${result.realName}\n사번(아이디): ${result.employeeId}\n비밀번호: ${newPhone}`
+      )
       setNewRealName('')
       setNewPhone('')
       await loadUsers()
+      await loadPreviewId()
     } catch (err) {
       setCreateError(err.message ?? '계정 생성 중 오류가 발생했습니다.')
     } finally {
@@ -239,17 +260,19 @@ export default function AdminUsers() {
         <h2 className="text-base font-bold text-gray-900">신규 직원 계정 생성</h2>
         <form onSubmit={handleCreateUser} className="mt-3 flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            사번
+            아이디 (자동 생성)
             <input
-              value={newEmployeeId}
-              onChange={(event) => setNewEmployeeId(event.target.value)}
-              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-              placeholder="202504012"
-              inputMode="numeric"
+              value={previewId || '불러오는 중…'}
+              readOnly
+              tabIndex={-1}
+              className="min-h-[44px] rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm font-normal text-gray-500 outline-none"
             />
+            <span className="text-xs font-normal text-gray-400">
+              회사 개인정보 방침에 따라 앱이 순번(2026NNNN)을 부여합니다.
+            </span>
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            실명
+            성명
             <input
               value={newRealName}
               onChange={(event) => setNewRealName(event.target.value)}
@@ -258,23 +281,21 @@ export default function AdminUsers() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            휴대폰
-            <div className="flex items-center min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm focus-within:border-blue-500">
-              <span className="text-gray-500 font-normal mr-1">010 -</span>
-              <input
-                value={newPhone}
-                onChange={(event) => {
-                  const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
-                  setNewPhone(digits)
-                }}
-                className="flex-1 outline-none text-sm font-normal"
-                placeholder="2067 6442"
-                inputMode="numeric"
-                maxLength={8}
-              />
-            </div>
+            휴대폰 뒤 8자리
+            <input
+              value={newPhone}
+              onChange={(event) => {
+                const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
+                setNewPhone(digits)
+              }}
+              type="text"
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="20676442"
+              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+            />
+            <span className="text-xs font-normal text-gray-400">그대로 초기 비밀번호로 사용됩니다.</span>
           </label>
-          <p className="text-xs text-gray-400">초기 비밀번호: 입력한 8자리 숫자</p>
           {createError && <p className="text-sm font-semibold text-red-600">{createError}</p>}
           <button
             type="submit"

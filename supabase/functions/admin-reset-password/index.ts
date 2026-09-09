@@ -30,12 +30,13 @@ serve(async (req) => {
   const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
   if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
 
-  const { data: adminRow } = await supabaseAdmin
-    .from('gep_admin_emails')
-    .select('email')
-    .eq('email', (user.email ?? '').toLowerCase())
+  // 관리자 판정 — public.users.is_admin (구 gep_admin_emails 테이블은 2026-08-15 삭제됨, GEPv30-163)
+  const { data: callerProfile } = await supabaseAdmin
+    .from('users')
+    .select('is_admin')
+    .eq('user_id', user.id)
     .single()
-  if (!adminRow) return jsonResponse({ error: 'Forbidden: not admin' }, 403)
+  if (!callerProfile?.is_admin) return jsonResponse({ error: 'Forbidden: not admin' }, 403)
 
   // 요청 파싱
   const { targetUserId } = await req.json()

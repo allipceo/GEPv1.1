@@ -14,12 +14,33 @@ function jsonResponse(body: unknown, status: number) {
   })
 }
 
+/**
+ * 파일럿 사번 자동 생성 — `2026NNNN` (8자리) 순번.
+ * 회사 개인정보 방침상 실제 사번을 쓰지 않고 앱이 순번을 부여한다.
+ * auth.users 이메일(`<사번>@gep.local`)에서 `2026` + 4자리 패턴만 추려 최댓값 + 1.
+ * 모든 값은 문자열로 취급한다 (앞자리 0 보존, 숫자 변환은 비교용 임시로만).
+ * 파일럿 규모(수십 명)에서 listUsers 1페이지(perPage 1000)로 충분.
+ */
+async function nextEmployeeId(supabaseAdmin: ReturnType<typeof createClient>): Promise<string> {
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (error) throw new Error(error.message)
+
+  let maxSeq = 20260900
+  for (const u of data.users) {
+    const m = String(u.email ?? '').match(/^(2026\d{4})@gep\.local$/)
+    if (m) {
+      const n = parseInt(m[1], 10)
+      if (n > maxSeq) maxSeq = n
+    }
+  }
+  return String(maxSeq + 1)
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders })
   }
 
-  // 관리자 인증 확인
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
@@ -30,64 +51,80 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  // 호출자가 관리자인지 확인
+  // 호출자 확인
   const token = authHeader.replace('Bearer ', '')
   const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
   if (authError || !user) {
     return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
-  // gep_admin_emails 확인 (gep_is_admin()과 동일하게 대소문자 무시 비교)
-  const { data: adminRow } = await supabaseAdmin
-    .from('gep_admin_emails')
-    .select('email')
-    .eq('email', (user.email ?? '').toLowerCase())
+  // 관리자 판정 — public.users.is_admin (구 gep_admin_emails 테이블은 2026-08-15 삭제됨, GEPv30-163)
+  const { data: callerProfile } = await supabaseAdmin
+    .from('users')
+    .select('is_admin')
+    .eq('user_id', user.id)
     .single()
 
-  if (!adminRow) {
+  if (!callerProfile?.is_admin) {
     return jsonResponse({ error: 'Forbidden: not admin' }, 403)
   }
 
-  // 요청 본문 파싱
-  const { employeeId, realName, phone } = await req.json()
+  const body = await req.json().catch(() => ({}))
 
-  if (!employeeId || !realName || !phone) {
-    return jsonResponse({ error: '사번, 실명, 휴대폰 필수' }, 400)
+  // 미리보기 모드 — 다음 사번만 반환하고 생성하지 않음
+  if (body?.dryRun === true) {
+    try {
+      return jsonResponse({ employeeId: await nextEmployeeId(supabaseAdmin) }, 200)
+    } catch (err) {
+      return jsonResponse({ error: (err as Error).message ?? '사번 미리보기 실패' }, 500)
+    }
   }
 
-  const normalizedEmployeeId = String(employeeId).trim()
-  const normalizedPhone = String(phone).replace(/\D/g, '')
+  // 입력 — 성명 + 휴대폰 뒤 8자리 (모두 문자열)
+  const realName = String(body?.realName ?? '').trim()
+  const phone8 = String(body?.phone8 ?? '').replace(/\D/g, '')
 
-  if (!/^\d{6,}$/.test(normalizedEmployeeId)) {
-    return jsonResponse({ error: '사번은 숫자 6자리 이상이어야 합니다.' }, 400)
+  if (!realName) {
+    return jsonResponse({ error: '성명을 입력해 주세요.' }, 400)
+  }
+  if (!/^\d{8}$/.test(phone8)) {
+    return jsonResponse({ error: '휴대폰 뒤 8자리를 정확히 입력해 주세요.' }, 400)
   }
 
-  if (normalizedPhone.length < 8) {
-    return jsonResponse({ error: '휴대폰 번호가 올바르지 않습니다.' }, 400)
+  // 사번 자동 생성 (문자열)
+  let employeeId: string
+  try {
+    employeeId = await nextEmployeeId(supabaseAdmin)
+  } catch (err) {
+    return jsonResponse({ error: (err as Error).message ?? '사번 생성 실패' }, 500)
   }
 
-  // 이메일 및 비밀번호 생성
-  const email = `${normalizedEmployeeId}@gep.local`
-  const password = normalizedPhone.slice(-8) // 끝 8자리
+  const email = `${employeeId}@gep.local`
+  const password = phone8 // 비밀번호 = 휴대폰 뒤 8자리 (문자열)
 
-  // Supabase Auth에 사용자 생성
+  // Supabase Auth 사용자 생성
   const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    email_confirm: true, // 이메일 확인 생략
+    email_confirm: true,
   })
 
   if (createError || !newUser?.user) {
-    return jsonResponse({ error: createError?.message ?? '계정 생성 실패' }, 400)
+    const msg = createError?.message ?? '계정 생성 실패'
+    const dup = /already been registered|already exists|duplicate/i.test(msg)
+    return jsonResponse(
+      { error: dup ? '사번이 중복되었습니다. 잠시 후 다시 시도해 주세요.' : msg },
+      dup ? 409 : 400
+    )
   }
 
-  // users 테이블에 프로필 생성
+  // users 프로필 생성 — phone_number 에도 동일한 8자리 저장 (비밀번호 초기화 기능이 사용)
   const { error: profileError } = await supabaseAdmin
     .from('users')
     .insert({
       user_id: newUser.user.id,
       real_name: realName,
-      phone_number: normalizedPhone,
+      phone_number: phone8,
       status: 'active',
       approval_status: 'approved',
       approved_at: new Date().toISOString(),
@@ -96,10 +133,10 @@ serve(async (req) => {
     })
 
   if (profileError) {
-    // auth user는 생성됐으나 profile 실패 → auth user 삭제 후 에러 반환
+    // 프로필 실패 시 auth user 롤백
     await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
     return jsonResponse({ error: profileError.message }, 500)
   }
 
-  return jsonResponse({ success: true, email, employeeId: normalizedEmployeeId }, 200)
+  return jsonResponse({ success: true, employeeId, email, realName }, 200)
 })
