@@ -32,8 +32,8 @@ export const SERVICE_FLAGS = {
   SERVICE_A: true,        // 1주차 개방: 선택형 회차순
   SERVICE_B: true,        // 1주차 개방: 선택형 과목별
   UNIFIED_WRONG: false,   // 2주차 개방: 틀린문제·통합오답
-  OX: false,              // 3주차 개방: 진위형
-  STATS: false,           // 4주차 개방: 학습분석 (GEPv30-154 신규 키)
+  OX: true,               // GEPv30-161 개방 (2026-09-09): 진위형 풀기 — 과목별
+  STATS: true,            // GEPv30-161 개방 (2026-09-09): 내 학습 분석
   MINI_MOCK: false,       // 5주차 개방: 간이모의고사
   MOCK_EXAM: false,       // 5주차 개방: 모의고사
   CUSTOM_MOCK: false,     // 5주차 개방: 맞춤형 모의고사
