@@ -30,7 +30,7 @@ export default function LoginButton() {
 
     const normalizedId = employeeId.trim()
     if (!/^\d{6,}$/.test(normalizedId)) {
-      setErrorMsg('사번은 숫자 6자리 이상이어야 합니다.')
+      setErrorMsg('아이디는 숫자 6자리 이상이어야 합니다.')
       return
     }
 
@@ -65,7 +65,7 @@ export default function LoginButton() {
       }
 
       if (result.error) {
-        setErrorMsg('사번 또는 비밀번호가 올바르지 않습니다.')
+        setErrorMsg('아이디 또는 비밀번호가 올바르지 않습니다.')
       }
     } catch (e) {
       console.warn('[GEP] signInWithPassword exception:', e)
@@ -79,28 +79,27 @@ export default function LoginButton() {
     <div className="w-full max-w-xs">
       <form onSubmit={handleLogin} className="flex flex-col gap-2">
         <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-          사번
+          아이디
           <input
             value={employeeId}
             onChange={(event) => setEmployeeId(event.target.value)}
             className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
             placeholder="예: 202504012"
             inputMode="numeric"
+            autoComplete="username"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
           비밀번호
-          <div className="flex items-center gap-1">
-            <span className="min-h-[44px] flex items-center px-3 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-500 whitespace-nowrap">010-</span>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              maxLength={8}
-              className="min-h-[44px] flex-1 rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-              placeholder="뒷번호 8자리"
-            />
-          </div>
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            maxLength={8}
+            className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
+            placeholder="비밀번호"
+            autoComplete="current-password"
+          />
         </label>
         {errorMsg && <p className="text-sm font-semibold text-red-600">{errorMsg}</p>}
         <button
@@ -113,7 +112,11 @@ export default function LoginButton() {
       </form>
 
       <p className="mt-3 text-center text-xs text-gray-400">
-        문의: 관리자에게 연락하세요
+        신규 가입자는 관리자에게 연락하세요
+        <br />
+        <a href="mailto:choeunsang@gmail.com" className="font-semibold text-blue-500">
+          choeunsang@gmail.com
+        </a>
       </p>
 
       <button
