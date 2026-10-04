@@ -42,7 +42,7 @@ serve(async (req) => {
   const { targetUserId } = await req.json()
   if (!targetUserId) return jsonResponse({ error: 'targetUserId 필수' }, 400)
 
-  // users 테이블에서 phone_number 조회
+  // users.phone_number 컬럼은 DB 구조 유지 목적으로 쓰는 초기화 기준 8자리 숫자다.
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
     .select('phone_number')
@@ -54,8 +54,8 @@ serve(async (req) => {
   }
 
   const newPassword = String(profile.phone_number).slice(-8)
-  if (newPassword.length !== 8) {
-    return jsonResponse({ error: '전화번호가 올바르지 않아 초기화할 수 없습니다.' }, 400)
+  if (!/^\d{8}$/.test(newPassword)) {
+    return jsonResponse({ error: '초기화 기준값이 올바르지 않아 초기화할 수 없습니다.' }, 400)
   }
 
   // 비밀번호 초기화
@@ -66,5 +66,5 @@ serve(async (req) => {
 
   if (resetError) return jsonResponse({ error: resetError.message }, 500)
 
-  return jsonResponse({ success: true, hint: `휴대폰 뒷 8자리(${newPassword})로 초기화됨` }, 200)
+  return jsonResponse({ success: true, hint: `관리자 기준 8자리(${newPassword})로 초기화됨` }, 200)
 })

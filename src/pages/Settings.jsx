@@ -6,11 +6,11 @@ import AppHeader from '../components/AppHeader'
 
 export default function Settings() {
   const authState = useAuthStore.getState()
-  const email     = useAuthStore((s) => s.email)      // 사번@gep.local
+  const email     = useAuthStore((s) => s.email)      // 아이디@gep.local
   const serviceLevel = useAuthStore((s) => s.serviceLevel)
   const resetBaselineAt = useAuthStore((s) => s.resetBaselineAt)
 
-  // 사번 추출 (이메일에서 @gep.local 제거)
+  // 아이디 추출 (이메일에서 @gep.local 제거)
   const employeeId = email ? email.replace('@gep.local', '') : '-'
 
   // ── 비밀번호 변경 ──
@@ -20,8 +20,7 @@ export default function Settings() {
   const [pwSaving, setPwSaving] = useState(false)
 
   const handlePwSave = async () => {
-    if (pw.length < 8) { setPwMsg('비밀번호는 8자리여야 합니다.'); return }
-    if (pw.length > 8) { setPwMsg('비밀번호는 8자리여야 합니다. (9자리 이상 불가)'); return }
+    if (!/^\d{8}$/.test(pw)) { setPwMsg('비밀번호는 숫자 8자리여야 합니다.'); return }
     if (pw !== pwConfirm) { setPwMsg('비밀번호가 일치하지 않습니다.'); return }
     setPwSaving(true)
     try {
@@ -71,9 +70,9 @@ export default function Settings() {
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">내 계정</p>
         <div className="rounded-xl border border-gray-100 bg-white divide-y divide-gray-50">
 
-          {/* 사번 (read-only) */}
+          {/* 아이디 (read-only) */}
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm text-gray-500">사번</span>
+            <span className="text-sm text-gray-500">아이디</span>
             <span className="text-sm font-medium text-gray-400">{employeeId}</span>
           </div>
 
@@ -90,19 +89,23 @@ export default function Settings() {
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">보안</p>
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-4 flex flex-col gap-3">
           <p className="text-sm font-semibold text-gray-700">비밀번호 변경</p>
-          <p className="text-xs text-gray-400">새 비밀번호 8자리를 입력해 주세요.</p>
+          <p className="text-xs text-gray-400">새 비밀번호는 숫자 8자리만 사용할 수 있습니다.</p>
           <input
             type="password"
-            placeholder="새 비밀번호 (8자리)"
+            placeholder="새 비밀번호 (숫자 8자리)"
             value={pw}
-            onChange={(e) => { setPw(e.target.value); setPwMsg('') }}
+            onChange={(e) => { setPw(e.target.value.replace(/[^0-9]/g, '').slice(0, 8)); setPwMsg('') }}
+            inputMode="numeric"
+            maxLength={8}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
           <input
             type="password"
             placeholder="비밀번호 확인"
             value={pwConfirm}
-            onChange={(e) => { setPwConfirm(e.target.value); setPwMsg('') }}
+            onChange={(e) => { setPwConfirm(e.target.value.replace(/[^0-9]/g, '').slice(0, 8)); setPwMsg('') }}
+            inputMode="numeric"
+            maxLength={8}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
           {pwMsg && <p className={`text-xs ${pwMsg.includes('변경되었') ? 'text-blue-500' : 'text-red-500'}`}>{pwMsg}</p>}

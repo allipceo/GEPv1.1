@@ -15,9 +15,9 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 /**
- * 파일럿 사번 자동 생성 — `2026NNNN` (8자리) 순번.
- * 회사 개인정보 방침상 실제 사번을 쓰지 않고 앱이 순번을 부여한다.
- * auth.users 이메일(`<사번>@gep.local`)에서 `2026` + 4자리 패턴만 추려 최댓값 + 1.
+ * 파일럿 아이디 자동 생성 — `2026NNNN` (8자리) 순번.
+ * 회사 개인정보 방침상 실제 사번/휴대폰번호를 쓰지 않고 앱이 순번을 부여한다.
+ * auth.users 이메일(`<아이디>@gep.local`)에서 `2026` + 4자리 패턴만 추려 최댓값 + 1.
  * 모든 값은 문자열로 취급한다 (앞자리 0 보존, 숫자 변환은 비교용 임시로만).
  * 파일럿 규모(수십 명)에서 listUsers 1페이지(perPage 1000)로 충분.
  */
@@ -71,41 +71,37 @@ serve(async (req) => {
 
   const body = await req.json().catch(() => ({}))
 
-  // 미리보기 모드 — 다음 사번만 반환하고 생성하지 않음
+  // 미리보기 모드 — 다음 아이디만 반환하고 생성하지 않음
   if (body?.dryRun === true) {
     try {
       return jsonResponse({ employeeId: await nextEmployeeId(supabaseAdmin) }, 200)
     } catch (err) {
-      return jsonResponse({ error: (err as Error).message ?? '사번 미리보기 실패' }, 500)
+      return jsonResponse({ error: (err as Error).message ?? '아이디 미리보기 실패' }, 500)
     }
   }
 
-  // 입력 — 성명 + 휴대폰 뒤 8자리 (모두 문자열)
+  // 입력 — 성명만 받는다. 초기 비밀번호는 자동 생성 아이디와 동일한 8자리 숫자로 설정한다.
   const realName = String(body?.realName ?? '').trim()
-  const phone8 = String(body?.phone8 ?? '').replace(/\D/g, '')
 
   if (!realName) {
     return jsonResponse({ error: '성명을 입력해 주세요.' }, 400)
   }
-  if (!/^\d{8}$/.test(phone8)) {
-    return jsonResponse({ error: '휴대폰 뒤 8자리를 정확히 입력해 주세요.' }, 400)
-  }
 
-  // 사번 자동 생성 (문자열)
+  // 아이디 자동 생성 (문자열)
   let employeeId: string
   try {
     employeeId = await nextEmployeeId(supabaseAdmin)
   } catch (err) {
-    return jsonResponse({ error: (err as Error).message ?? '사번 생성 실패' }, 500)
+    return jsonResponse({ error: (err as Error).message ?? '아이디 생성 실패' }, 500)
   }
 
   const email = `${employeeId}@gep.local`
-  const password = phone8 // 비밀번호 = 휴대폰 뒤 8자리 (문자열)
+  const initialPassword = employeeId
 
   // Supabase Auth 사용자 생성
   const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
-    password,
+    password: initialPassword,
     email_confirm: true,
   })
 
@@ -113,18 +109,19 @@ serve(async (req) => {
     const msg = createError?.message ?? '계정 생성 실패'
     const dup = /already been registered|already exists|duplicate/i.test(msg)
     return jsonResponse(
-      { error: dup ? '사번이 중복되었습니다. 잠시 후 다시 시도해 주세요.' : msg },
+      { error: dup ? '아이디가 중복되었습니다. 잠시 후 다시 시도해 주세요.' : msg },
       dup ? 409 : 400
     )
   }
 
-  // users 프로필 생성 — phone_number 에도 동일한 8자리 저장 (비밀번호 초기화 기능이 사용)
+  // users.phone_number 컬럼은 DB 구조 유지 목적으로 재사용한다.
+  // 실제 휴대폰번호가 아니라 관리자 초기화 기준 8자리 숫자다.
   const { error: profileError } = await supabaseAdmin
     .from('users')
     .insert({
       user_id: newUser.user.id,
       real_name: realName,
-      phone_number: phone8,
+      phone_number: initialPassword,
       status: 'active',
       approval_status: 'approved',
       approved_at: new Date().toISOString(),
@@ -138,5 +135,5 @@ serve(async (req) => {
     return jsonResponse({ error: profileError.message }, 500)
   }
 
-  return jsonResponse({ success: true, employeeId, email, realName }, 200)
+  return jsonResponse({ success: true, employeeId, initialPassword, email, realName }, 200)
 })

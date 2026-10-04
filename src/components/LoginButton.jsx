@@ -34,8 +34,8 @@ export default function LoginButton() {
       return
     }
 
-    if (password.length < 8) {
-      setErrorMsg('비밀번호는 8자리 이상이어야 합니다.')
+    if (!/^\d{8}$/.test(password)) {
+      setErrorMsg('비밀번호는 숫자 8자리여야 합니다.')
       return
     }
 
@@ -93,11 +93,12 @@ export default function LoginButton() {
           비밀번호
           <input
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => setPassword(event.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
             type="password"
             maxLength={8}
+            inputMode="numeric"
             className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-            placeholder="비밀번호"
+            placeholder="숫자 8자리"
             autoComplete="current-password"
           />
         </label>

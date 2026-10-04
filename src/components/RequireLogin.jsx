@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LoginButton from './LoginButton'
 import { useAuthStore } from '../stores/authStore'
@@ -24,98 +23,24 @@ function LoginRequiredDialog() {
 function ApprovalRequiredDialog() {
   const navigate = useNavigate()
   const approvalStatus = useAuthStore((s) => s.approvalStatus)
-  const realName = useAuthStore((s) => s.realName)
-  const phoneNumber = useAuthStore((s) => s.phoneNumber)
-  const submitApprovalRequest = useAuthStore((s) => s.submitApprovalRequest)
-  const [name, setName] = useState(realName ?? '')
-  const [phone, setPhone] = useState(phoneNumber ?? '')
-  const [memo, setMemo] = useState('')
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const needsRequest = approvalStatus === 'pending' && (!realName || !phoneNumber)
-
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-    setError('')
-
-    if (!name.trim()) {
-      setError('실명을 입력해 주세요.')
-      return
-    }
-
-    if (phone.replace(/[^\d]/g, '').length < 9) {
-      setError('전화번호를 정확히 입력해 주세요.')
-      return
-    }
-
-    setIsSubmitting(true)
-    const result = await submitApprovalRequest({ realName: name, phoneNumber: phone, memo })
-    setIsSubmitting(false)
-
-    if (!result.success) setError(result.error ?? '승인 요청 저장에 실패했습니다.')
-  }
 
   const title = approvalStatus === 'rejected'
     ? '승인 요청이 거절되었습니다'
     : approvalStatus === 'paused'
       ? '사용이 일시 중지되었습니다'
-      : needsRequest
-        ? '승인 요청이 필요합니다'
-        : '승인 대기 중입니다'
+      : '관리자 승인이 필요합니다'
 
   return (
     <AccessShell title={title}>
-      {needsRequest ? (
-        <form className="mt-4 flex flex-col gap-3" onSubmit={handleSubmit}>
-          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            실명
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-              placeholder="홍길동"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            전화번호
-            <input
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-              placeholder="01012345678"
-              inputMode="tel"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            메모
-            <textarea
-              value={memo}
-              onChange={(event) => setMemo(event.target.value)}
-              className="min-h-[72px] rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal outline-none focus:border-blue-500"
-              placeholder="소속 또는 응시 예정 정보를 입력해 주세요."
-            />
-          </label>
-          {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="min-h-[44px] rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            {isSubmitting ? '저장 중...' : '가입 승인 요청'}
-          </button>
-          <HomeButton onClick={() => navigate('/')} />
-        </form>
-      ) : (
-        <>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            운영자 승인이 완료되면 문제풀이와 카운팅을 사용할 수 있습니다.
-          </p>
-          <div className="mt-5">
-            <HomeButton onClick={() => navigate('/')} />
-          </div>
-        </>
-      )}
+      <p className="mt-2 text-sm leading-6 text-gray-600">
+        신규 사용자는 관리자에게 이메일로 신청해 주세요. 관리자가 아이디와 초기 비밀번호를 발급합니다.
+      </p>
+      <p className="mt-3 text-sm font-semibold text-blue-600">
+        choeunsang@gmail.com
+      </p>
+      <div className="mt-5">
+        <HomeButton onClick={() => navigate('/')} />
+      </div>
     </AccessShell>
   )
 }

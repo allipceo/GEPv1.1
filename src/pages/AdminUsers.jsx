@@ -22,8 +22,7 @@ export default function AdminUsers() {
   const [memoByUser, setMemoByUser] = useState({})
 
   const [newRealName, setNewRealName] = useState('')
-  const [newPhone, setNewPhone] = useState('')          // 휴대폰 뒤 8자리 = 초기 비밀번호
-  const [previewId, setPreviewId] = useState('')        // 자동 생성될 사번 미리보기 (읽기전용)
+  const [previewId, setPreviewId] = useState('')        // 자동 생성될 아이디/초기 비밀번호 미리보기 (읽기전용)
   const [createError, setCreateError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
@@ -39,7 +38,7 @@ export default function AdminUsers() {
     }
   }, [isAdmin])
 
-  // 자동 생성될 사번 미리보기 — 엣지 함수 dryRun 모드
+  // 자동 생성될 아이디 미리보기 — 엣지 함수 dryRun 모드
   const loadPreviewId = async () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession()
@@ -125,7 +124,7 @@ export default function AdminUsers() {
 
   const resetUserPassword = async (targetUser) => {
     const confirmed = window.confirm(
-      `${targetUser.real_name || '이 사용자'}의 비밀번호를 휴대폰 뒷 8자리(${targetUser.phone_number?.slice(-8)})로 초기화하시겠습니까?`
+      `${targetUser.real_name || '이 사용자'}의 비밀번호를 관리자 기준 8자리(${targetUser.phone_number?.slice(-8)})로 초기화하시겠습니까?`
     )
     if (!confirmed) return
 
@@ -164,7 +163,7 @@ export default function AdminUsers() {
       return
     }
     if (editPhone.length !== 8) {
-      window.alert('휴대폰 뒷 8자리를 정확히 입력해 주세요.')
+      window.alert('초기화 기준 8자리를 정확히 입력해 주세요.')
       return
     }
 
@@ -193,12 +192,6 @@ export default function AdminUsers() {
       setCreateError('성명을 입력해 주세요.')
       return
     }
-    // 문자열 그대로 검증 — 앞자리 0 보존, 숫자 변환 금지
-    if (!/^\d{8}$/.test(newPhone)) {
-      setCreateError('휴대폰 뒤 8자리를 정확히 입력해 주세요.')
-      return
-    }
-
     setIsCreating(true)
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
@@ -214,7 +207,6 @@ export default function AdminUsers() {
           },
           body: JSON.stringify({
             realName: newRealName.trim(),
-            phone8: newPhone,
           }),
         }
       )
@@ -226,10 +218,9 @@ export default function AdminUsers() {
       }
 
       window.alert(
-        `계정 생성 완료\n성명: ${result.realName}\n사번(아이디): ${result.employeeId}\n비밀번호: ${newPhone}`
+        `계정 생성 완료\n성명: ${result.realName}\n아이디: ${result.employeeId}\n초기 비밀번호: ${result.initialPassword ?? result.employeeId}`
       )
       setNewRealName('')
-      setNewPhone('')
       await loadUsers()
       await loadPreviewId()
     } catch (err) {
@@ -257,10 +248,10 @@ export default function AdminUsers() {
       <AdminTabs active="users" />
 
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-base font-bold text-gray-900">신규 직원 계정 생성</h2>
+        <h2 className="text-base font-bold text-gray-900">신규 사용자 계정 생성</h2>
         <form onSubmit={handleCreateUser} className="mt-3 flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            아이디 (자동 생성)
+            아이디 / 초기 비밀번호 (자동 생성)
             <input
               value={previewId || '불러오는 중…'}
               readOnly
@@ -268,7 +259,7 @@ export default function AdminUsers() {
               className="min-h-[44px] rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm font-normal text-gray-500 outline-none"
             />
             <span className="text-xs font-normal text-gray-400">
-              회사 개인정보 방침에 따라 앱이 순번(2026NNNN)을 부여합니다.
+              아이디와 초기 비밀번호는 동일한 숫자 8자리로 자동 발급됩니다.
             </span>
           </label>
           <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
@@ -279,22 +270,6 @@ export default function AdminUsers() {
               className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
               placeholder="홍길동"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-            휴대폰 뒤 8자리
-            <input
-              value={newPhone}
-              onChange={(event) => {
-                const digits = event.target.value.replace(/[^0-9]/g, '').slice(0, 8)
-                setNewPhone(digits)
-              }}
-              type="text"
-              inputMode="numeric"
-              maxLength={8}
-              placeholder="20676442"
-              className="min-h-[44px] rounded-lg border border-gray-300 px-3 text-sm font-normal outline-none focus:border-blue-500"
-            />
-            <span className="text-xs font-normal text-gray-400">그대로 초기 비밀번호로 사용됩니다.</span>
           </label>
           {createError && <p className="text-sm font-semibold text-red-600">{createError}</p>}
           <button
@@ -336,7 +311,9 @@ export default function AdminUsers() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-base font-bold text-gray-900">{user.real_name || '실명 미입력'}</p>
-                  <p className="mt-1 text-sm text-gray-500">{user.phone_number || '전화번호 미입력'}</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    초기화 기준값: {user.phone_number || '미입력'}
+                  </p>
                   <p className="mt-1 text-xs text-gray-400">{user.user_id}</p>
                 </div>
                 <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
@@ -367,9 +344,8 @@ export default function AdminUsers() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-                    휴대폰
+                    초기화 기준 8자리
                     <div className="flex items-center min-h-[40px] rounded-lg border border-gray-300 px-3 text-sm bg-white focus-within:border-blue-500">
-                      <span className="text-gray-500 font-normal mr-1">010 -</span>
                       <input
                         value={editPhone}
                         onChange={(event) => {
@@ -377,13 +353,13 @@ export default function AdminUsers() {
                           setEditPhone(digits)
                         }}
                         className="flex-1 outline-none text-sm font-normal"
-                        placeholder="20676442"
+                        placeholder="20261002"
                         inputMode="numeric"
                         maxLength={8}
                       />
                     </div>
                   </label>
-                  <p className="text-xs text-gray-400">* 사번 변경은 지원하지 않습니다. 필요 시 계정 삭제 후 재생성하세요.</p>
+                  <p className="text-xs text-gray-400">* 아이디 변경은 지원하지 않습니다. 이 값은 관리자 비밀번호 초기화 기준으로만 사용됩니다.</p>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -449,7 +425,7 @@ export default function AdminUsers() {
                   disabled={resettingPwUserId === user.user_id}
                   className="w-full min-h-[40px] rounded-lg border border-orange-200 bg-orange-50 px-3 text-sm font-semibold text-orange-700 disabled:opacity-50"
                 >
-                  {resettingPwUserId === user.user_id ? '초기화 중...' : '비밀번호 초기화 (휴대폰 뒷8자리)'}
+                  {resettingPwUserId === user.user_id ? '초기화 중...' : '비밀번호 초기화 (기준 8자리)'}
                 </button>
               </div>
             </div>
